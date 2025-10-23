@@ -140,6 +140,122 @@ class CompanyController {
     }
   }
 
+  async createCompany(req, res, next) {
+    try {
+      const companyData = req.body;
+
+      const newCompany = await companyService.createCompany(companyData);
+
+      res.status(201).json({
+        success: true,
+        message: 'Company created successfully',
+        data: newCompany
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateCompany(req, res, next) {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid company ID'
+        });
+      }
+
+      const updatedCompany = await companyService.updateCompany(parseInt(id), updateData);
+
+      if (!updatedCompany) {
+        return res.status(404).json({
+          success: false,
+          message: 'Company not found'
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Company updated successfully',
+        data: updatedCompany
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async patchCompany(req, res, next) {
+    try {
+      const { id } = req.params;
+      const patchData = req.body;
+
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid company ID'
+        });
+      }
+
+      // Validate that patch data is not empty
+      if (!patchData || Object.keys(patchData).length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'No fields provided for partial update'
+        });
+      }
+
+      const patchedCompany = await companyService.patchCompany(parseInt(id), patchData);
+
+      if (!patchedCompany) {
+        return res.status(404).json({
+          success: false,
+          message: 'Company not found'
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Company patched successfully',
+        data: patchedCompany
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteCompany(req, res, next) {
+    try {
+      const { id } = req.params;
+
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid company ID'
+        });
+      }
+
+      const result = await companyService.deleteCompany(parseInt(id));
+
+      if (!result) {
+        return res.status(404).json({
+          success: false,
+          message: 'Company not found'
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Company deleted successfully',
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async validateLogo(req, res, next) {
     try {
       // Basic validation for company logo URLs or uploads

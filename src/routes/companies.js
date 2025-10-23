@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const companyController = require('../controllers/companyController');
+const { validateRequest } = require('../middlewares/validation');
+const { companySchemas } = require('../validators/schemas');
 const {
   validatePagination,
   validateCompanyId,
@@ -32,5 +34,17 @@ router.post('/validate-logo', validateLogoUrl, companyController.validateLogo);
 
 // GET /api/companies/:id - Get company by ID
 router.get('/:id', validateCompanyId, companyController.getCompanyById);
+
+// POST /api/companies - Create new company
+router.post('/', validateRequest(companySchemas.create), companyController.createCompany);
+
+// PUT /api/companies/:id - Update company (full update)
+router.put('/:id', validateCompanyId, validateRequest(companySchemas.update), companyController.updateCompany);
+
+// PATCH /api/companies/:id - Update company (partial update)
+router.patch('/:id', validateCompanyId, validateRequest(companySchemas.update), companyController.patchCompany);
+
+// DELETE /api/companies/:id - Delete company
+router.delete('/:id', validateCompanyId, companyController.deleteCompany);
 
 module.exports = router;
