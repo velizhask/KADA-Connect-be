@@ -12,7 +12,7 @@ class LookupController {
    */
   async getIndustries(req, res, next) {
     try {
-      const industries = await lookupService.extractUniqueValues('companies', 'Industry / Sector');
+      const industries = await lookupService.extractUniqueValues('companies', 'industry_sector');
 
       res.status(200).json({
         success: true,
@@ -32,7 +32,7 @@ class LookupController {
    */
   async getTechRoles(req, res, next) {
     try {
-      const techRoles = await lookupService.extractUniqueValues('companies', 'Tech Roles or Fields of Interest');
+      const techRoles = await lookupService.extractUniqueValues('companies', 'tech_roles_interest');
 
       res.status(200).json({
         success: true,
@@ -52,7 +52,7 @@ class LookupController {
    */
   async getTechRoleCategories(req, res, next) {
     try {
-      const techRoles = await lookupService.extractUniqueValues('companies', 'Tech Roles or Fields of Interest');
+      const techRoles = await lookupService.extractUniqueValues('companies', 'tech_roles_interest');
 
       // Define categories
       const categories = {
@@ -135,7 +135,7 @@ class LookupController {
         });
       }
 
-      const techRoles = await lookupService.extractUniqueValues('companies', 'Tech Roles or Fields of Interest');
+      const techRoles = await lookupService.extractUniqueValues('companies', 'tech_roles_interest');
 
       // Filter roles by category
       const categoryKeywords = {
@@ -185,7 +185,7 @@ class LookupController {
     try {
       const { q: query, limit = 10 } = req.query;
 
-      const industries = await lookupService.extractUniqueValues('companies', 'Industry / Sector');
+      const industries = await lookupService.extractUniqueValues('companies', 'industry_sector');
       const results = lookupService.searchInList(industries, query, parseInt(limit));
 
       res.status(200).json({
@@ -210,7 +210,7 @@ class LookupController {
     try {
       const { q: query, limit = 10 } = req.query;
 
-      const techRoles = await lookupService.extractUniqueValues('companies', 'Tech Roles or Fields of Interest');
+      const techRoles = await lookupService.extractUniqueValues('companies', 'tech_roles_interest');
       const results = lookupService.searchInList(techRoles, query, parseInt(limit));
 
       res.status(200).json({

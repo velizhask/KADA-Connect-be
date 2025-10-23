@@ -7,26 +7,26 @@ class CompanyService {
         .from('companies')
         .select(`
           id,
-          "Company Name",
-          "Company Summary / Description",
-          "Industry / Sector",
-          "Company Website / Link",
-          "Company Logo",
-          "Tech Roles or Fields of Interest",
-          "Preferred Skillsets in Candidates",
-          "Contact Person Name",
-          "Email Address (Contact)",
-          "Phone / WhatsApp Number",
-          "Would you like this contact information to be visible on the mi"
+          company_name,
+          company_summary_description,
+          industry_sector,
+          company_website_link,
+          company_logo,
+          tech_roles_interest,
+          preferred_skillsets,
+          contact_person_name,
+          contact_email,
+          contact_phone_number,
+          contact_info_visible
         `, { count: 'exact' });
 
       // Apply filters
       if (filters.industry) {
-        query = query.ilike('"Industry / Sector"', `%${filters.industry}%`);
+        query = query.ilike('industry_sector', `%${filters.industry}%`);
       }
 
       if (filters.techRole) {
-        query = query.ilike('"Tech Roles or Fields of Interest"', `%${filters.techRole}%`);
+        query = query.ilike('tech_roles_interest', `%${filters.techRole}%`);
       }
 
       // Apply pagination
@@ -36,7 +36,7 @@ class CompanyService {
 
       query = query
         .range(offset, offset + limit - 1)
-        .order('"Company Name"');
+        .order('company_name');
 
       const { data, error, count } = await query;
 
@@ -69,17 +69,17 @@ class CompanyService {
         .from('companies')
         .select(`
           id,
-          "Company Name",
-          "Company Summary / Description",
-          "Industry / Sector",
-          "Company Website / Link",
-          "Company Logo",
-          "Tech Roles or Fields of Interest",
-          "Preferred Skillsets in Candidates",
-          "Contact Person Name",
-          "Email Address (Contact)",
-          "Phone / WhatsApp Number",
-          "Would you like this contact information to be visible on the mi"
+          company_name,
+          company_summary_description,
+          industry_sector,
+          company_website_link,
+          company_logo,
+          tech_roles_interest,
+          preferred_skillsets,
+          contact_person_name,
+          contact_email,
+          contact_phone_number,
+          contact_info_visible
         `)
         .eq('id', id)
         .single();
@@ -105,27 +105,27 @@ class CompanyService {
         .from('companies')
         .select(`
           id,
-          "Company Name",
-          "Company Summary / Description",
-          "Industry / Sector",
-          "Company Website / Link",
-          "Company Logo",
-          "Tech Roles or Fields of Interest",
-          "Preferred Skillsets in Candidates"
+          company_name,
+          company_summary_description,
+          industry_sector,
+          company_website_link,
+          company_logo,
+          tech_roles_interest,
+          preferred_skillsets
         `)
-        .or(`"Company Name".ilike.%${searchTerm}%,"Company Summary / Description".ilike.%${searchTerm}%,"Industry / Sector".ilike.%${searchTerm}%,"Tech Roles or Fields of Interest".ilike.%${searchTerm}%`);
+        .or(`company_name.ilike.%${searchTerm}%,company_summary_description.ilike.%${searchTerm}%,industry_sector.ilike.%${searchTerm}%,tech_roles_interest.ilike.%${searchTerm}%`);
 
       // Apply additional filters
       if (filters.industry) {
-        query = query.ilike('"Industry / Sector"', `%${filters.industry}%`);
+        query = query.ilike('industry_sector', `%${filters.industry}%`);
       }
 
       if (filters.techRole) {
-        query = query.ilike('"Tech Roles or Fields of Interest"', `%${filters.techRole}%`);
+        query = query.ilike('tech_roles_interest', `%${filters.techRole}%`);
       }
 
       const { data, error } = await query
-        .order('"Company Name"')
+        .order('company_name')
         .limit(50); // Limit search results
 
       if (error) {
@@ -144,8 +144,8 @@ class CompanyService {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('"Industry / Sector"')
-        .not('"Industry / Sector"', 'is', null);
+        .select('industry_sector')
+        .not('industry_sector', 'is', null);
 
       if (error) {
         console.error('[ERROR] Failed to fetch industries:', error.message);
@@ -153,7 +153,7 @@ class CompanyService {
       }
 
       // Get unique industries and sort them
-      const industries = [...new Set(data.map(item => item['Industry / Sector']))]
+      const industries = [...new Set(data.map(item => item['industry_sector']))]
         .filter(Boolean)
         .sort();
 
@@ -168,8 +168,8 @@ class CompanyService {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('"Tech Roles or Fields of Interest"')
-        .not('"Tech Roles or Fields of Interest"', 'is', null);
+        .select('tech_roles_interest')
+        .not('tech_roles_interest', 'is', null);
 
       if (error) {
         console.error('[ERROR] Failed to fetch tech roles:', error.message);
@@ -178,8 +178,8 @@ class CompanyService {
 
       // Split tech roles by common delimiters and get unique values
       const allRoles = data.map(item => {
-        const roles = item['Tech Roles or Fields of Interest'] || '';
-        return roles.split(/[,\/\n|]/).map(role => role.trim()).filter(Boolean);
+        const roles = item['tech_roles_interest'] || '';
+        return roles.split(/[,\n|]/).map(role => role.trim()).filter(Boolean);
       }).flat();
 
       const techRoles = [...new Set(allRoles)].sort();
@@ -195,7 +195,7 @@ class CompanyService {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('"Industry / Sector", "Tech Roles or Fields of Interest"');
+        .select('industry_sector, tech_roles_interest');
 
       if (error) {
         console.error('[ERROR] Failed to fetch company stats:', error.message);
@@ -203,10 +203,10 @@ class CompanyService {
       }
 
       const totalCompanies = data.length;
-      const industries = [...new Set(data.map(item => item['Industry / Sector']).filter(Boolean))];
+      const industries = [...new Set(data.map(item => item['industry_sector']).filter(Boolean))];
 
       const techRoles = data.map(item => {
-        const roles = item['Tech Roles or Fields of Interest'] || '';
+        const roles = item['tech_roles_interest'] || '';
         return roles.split(/[,\/\n|]/).map(role => role.trim()).filter(Boolean);
       }).flat();
 
@@ -235,17 +235,17 @@ class CompanyService {
         .insert([dbData])
         .select(`
           id,
-          "Company Name",
-          "Company Summary / Description",
-          "Industry / Sector",
-          "Company Website / Link",
-          "Company Logo",
-          "Tech Roles or Fields of Interest",
-          "Preferred Skillsets in Candidates",
-          "Contact Person Name",
-          "Email Address (Contact)",
-          "Phone / WhatsApp Number",
-          "Would you like this contact information to be visible on the mi"
+          company_name,
+          company_summary_description,
+          industry_sector,
+          company_website_link,
+          company_logo,
+          tech_roles_interest,
+          preferred_skillsets,
+          contact_person_name,
+          contact_email,
+          contact_phone_number,
+          contact_info_visible
         `)
         .single();
 
@@ -273,17 +273,17 @@ class CompanyService {
         .eq('id', id)
         .select(`
           id,
-          "Company Name",
-          "Company Summary / Description",
-          "Industry / Sector",
-          "Company Website / Link",
-          "Company Logo",
-          "Tech Roles or Fields of Interest",
-          "Preferred Skillsets in Candidates",
-          "Contact Person Name",
-          "Email Address (Contact)",
-          "Phone / WhatsApp Number",
-          "Would you like this contact information to be visible on the mi"
+          company_name,
+          company_summary_description,
+          industry_sector,
+          company_website_link,
+          company_logo,
+          tech_roles_interest,
+          preferred_skillsets,
+          contact_person_name,
+          contact_email,
+          contact_phone_number,
+          contact_info_visible
         `)
         .single();
 
@@ -319,17 +319,17 @@ class CompanyService {
         .eq('id', id)
         .select(`
           id,
-          "Company Name",
-          "Company Summary / Description",
-          "Industry / Sector",
-          "Company Website / Link",
-          "Company Logo",
-          "Tech Roles or Fields of Interest",
-          "Preferred Skillsets in Candidates",
-          "Contact Person Name",
-          "Email Address (Contact)",
-          "Phone / WhatsApp Number",
-          "Would you like this contact information to be visible on the mi"
+          company_name,
+          company_summary_description,
+          industry_sector,
+          company_website_link,
+          company_logo,
+          tech_roles_interest,
+          preferred_skillsets,
+          contact_person_name,
+          contact_email,
+          contact_phone_number,
+          contact_info_visible
         `)
         .single();
 
@@ -355,7 +355,7 @@ class CompanyService {
         .from('companies')
         .delete()
         .eq('id', id)
-        .select('id, "Company Name"')
+        .select('id, company_name')
         .single();
 
       if (error) {
@@ -369,7 +369,7 @@ class CompanyService {
       console.log('[SUCCESS] Company deleted successfully with ID:', data.id);
       return {
         id: data.id,
-        companyName: data['Company Name'],
+        companyName: data['company_name'],
         message: 'Company deleted successfully'
       };
     } catch (error) {
@@ -380,18 +380,18 @@ class CompanyService {
 
   transformCompanyDataForDB(companyData) {
     return {
-      'Email Address': companyData.emailAddress,
-      'Company Name': companyData.companyName,
-      'Company Summary / Description': companyData.companySummary,
-      'Industry / Sector': companyData.industry,
-      'Company Website / Link': companyData.companyWebsite || null,
-      'Company Logo': companyData.companyLogo || null,
-      'Tech Roles or Fields of Interest': companyData.techRoles || null,
-      'Preferred Skillsets in Candidates': companyData.preferredSkillsets || null,
-      'Contact Person Name': companyData.contactPersonName || null,
-      'Email Address (Contact)': companyData.contactEmailAddress || null,
-      'Phone / WhatsApp Number': companyData.contactPhoneNumber || null,
-      'Would you like this contact information to be visible on the mi': companyData.visibleContactInfo ? 'Yes' : 'No'
+      'email_address': companyData.emailAddress,
+      'company_name': companyData.companyName,
+      'company_summary_description': companyData.companySummary,
+      'industry_sector': companyData.industry,
+      'company_website_link': companyData.companyWebsite || null,
+      'company_logo': companyData.companyLogo || null,
+      'tech_roles_interest': companyData.techRoles || null,
+      'preferred_skillsets': companyData.preferredSkillsets || null,
+      'contact_person_name': companyData.contactPersonName || null,
+      'contact_email': companyData.contactEmailAddress || null,
+      'contact_phone_number': companyData.contactPhoneNumber || null,
+      'contact_info_visible': companyData.visibleContactInfo ? 'Yes' : 'No'
     };
   }
 
@@ -400,40 +400,40 @@ class CompanyService {
 
     // Only include fields that are explicitly provided (not undefined)
     if (patchData.emailAddress !== undefined) {
-      dbData['Email Address'] = patchData.emailAddress;
+      dbData['email_address'] = patchData.emailAddress;
     }
     if (patchData.companyName !== undefined) {
-      dbData['Company Name'] = patchData.companyName;
+      dbData['company_name'] = patchData.companyName;
     }
     if (patchData.companySummary !== undefined) {
-      dbData['Company Summary / Description'] = patchData.companySummary;
+      dbData['company_summary_description'] = patchData.companySummary;
     }
     if (patchData.industry !== undefined) {
-      dbData['Industry / Sector'] = patchData.industry;
+      dbData['industry_sector'] = patchData.industry;
     }
     if (patchData.companyWebsite !== undefined) {
-      dbData['Company Website / Link'] = patchData.companyWebsite || null;
+      dbData['company_website_link'] = patchData.companyWebsite || null;
     }
     if (patchData.companyLogo !== undefined) {
-      dbData['Company Logo'] = patchData.companyLogo || null;
+      dbData['company_logo'] = patchData.companyLogo || null;
     }
     if (patchData.techRoles !== undefined) {
-      dbData['Tech Roles or Fields of Interest'] = patchData.techRoles || null;
+      dbData['tech_roles_interest'] = patchData.techRoles || null;
     }
     if (patchData.preferredSkillsets !== undefined) {
-      dbData['Preferred Skillsets in Candidates'] = patchData.preferredSkillsets || null;
+      dbData['preferred_skillsets'] = patchData.preferredSkillsets || null;
     }
     if (patchData.contactPersonName !== undefined) {
-      dbData['Contact Person Name'] = patchData.contactPersonName || null;
+      dbData['contact_person_name'] = patchData.contactPersonName || null;
     }
     if (patchData.contactEmailAddress !== undefined) {
-      dbData['Email Address (Contact)'] = patchData.contactEmailAddress || null;
+      dbData['contact_email'] = patchData.contactEmailAddress || null;
     }
     if (patchData.contactPhoneNumber !== undefined) {
-      dbData['Phone / WhatsApp Number'] = patchData.contactPhoneNumber || null;
+      dbData['contact_phone_number'] = patchData.contactPhoneNumber || null;
     }
     if (patchData.visibleContactInfo !== undefined) {
-      dbData['Would you like this contact information to be visible on the mi'] = patchData.visibleContactInfo ? 'Yes' : 'No';
+      dbData['contact_info_visible'] = patchData.visibleContactInfo ? 'Yes' : 'No';
     }
 
     return dbData;
@@ -442,17 +442,17 @@ class CompanyService {
   transformCompanyData(company) {
     return {
       id: company.id,
-      companyName: company['Company Name'],
-      companySummary: company['Company Summary / Description'],
-      industry: company['Industry / Sector'],
-      website: company['Company Website / Link'],
-      logo: company['Company Logo'],
-      techRoles: company['Tech Roles or Fields of Interest'],
-      preferredSkillsets: company['Preferred Skillsets in Candidates'],
-      contactPerson: company['Contact Person Name'],
-      contactEmail: company['Email Address (Contact)'],
-      contactPhone: company['Phone / WhatsApp Number'],
-      contactInfoVisible: company['Would you like this contact information to be visible on the mi'] === 'Yes'
+      companyName: company['company_name'],
+      companySummary: company['company_summary_description'],
+      industry: company['industry_sector'],
+      website: company['company_website_link'],
+      logo: company['company_logo'],
+      techRoles: company['tech_roles_interest'],
+      preferredSkillsets: company['preferred_skillsets'],
+      contactPerson: company['contact_person_name'],
+      contactEmail: company['contact_email'],
+      contactPhone: company['contact_phone_number'],
+      contactInfoVisible: company['contact_info_visible'] === 'Yes'
     };
   }
 

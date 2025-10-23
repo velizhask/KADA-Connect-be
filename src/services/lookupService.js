@@ -8,7 +8,9 @@ const { supabase } = require('../db');
 class LookupService {
   constructor() {
     this.cache = new Map();
-    this.cacheTTL = 5 * 60 * 1000; // 5 minutes
+    this.cacheTTL = 60 * 60 * 1000; // 1 hour for static lookup data
+    this.cacheVersion = '1.0'; // For cache invalidation
+    this.cacheWarmed = false;
   }
 
   /**
@@ -24,9 +26,10 @@ class LookupService {
    * Get data from cache
    */
   getCachedData(key) {
-    const cached = this.cache.get(key);
-    if (!cached || !this.isCacheValid(key)) {
-      this.cache.delete(key);
+    const versionedKey = this.getVersionedCacheKey(key);
+    const cached = this.cache.get(versionedKey);
+    if (!cached || !this.isCacheValid(versionedKey)) {
+      this.cache.delete(versionedKey);
       return null;
     }
     return cached.data;
@@ -36,7 +39,8 @@ class LookupService {
    * Set data in cache
    */
   setCachedData(key, data) {
-    this.cache.set(key, {
+    const versionedKey = this.getVersionedCacheKey(key);
+    this.cache.set(versionedKey, {
       data,
       timestamp: Date.now()
     });
@@ -47,6 +51,44 @@ class LookupService {
    */
   clearCache() {
     this.cache.clear();
+  }
+
+  /**
+   * Generate versioned cache key
+   */
+  getVersionedCacheKey(baseKey) {
+    return `${this.cacheVersion}_${baseKey}`;
+  }
+
+  /**
+   * Warm cache with frequently accessed data
+   */
+  async warmCache() {
+    if (this.cacheWarmed) {
+      return;
+    }
+
+    console.log('[INFO] Warming lookup service cache...');
+    const startTime = Date.now();
+
+    try {
+      // Pre-populate cache with most common data
+      await Promise.all([
+        this.extractUniqueValues('companies', 'industry_sector'),
+        this.extractUniqueValues('companies', 'tech_roles_interest'),
+        this.extractTechSkills(),
+        this.extractUniqueValues('students', 'status'),
+        this.getIndustriesWithCount(),
+        this.getTechRolesWithCount(),
+        this.getTechSkillsWithCount()
+      ]);
+
+      this.cacheWarmed = true;
+      const duration = Date.now() - startTime;
+      console.log(`[SUCCESS] Cache warmed in ${duration}ms`);
+    } catch (error) {
+      console.error('[ERROR] Failed to warm cache:', error.message);
+    }
   }
 
   /**
@@ -72,6 +114,8 @@ class LookupService {
       totalKeys: keys.length,
       cacheSize: this.cache.size,
       ttl: this.cacheTTL / 1000, // seconds
+      version: this.cacheVersion,
+      warmed: this.cacheWarmed,
       keys: status
     };
   }
@@ -97,6 +141,7 @@ class LookupService {
     }
 
     try {
+      // Optimized query with better performance
       let query = supabase
         .from(table)
         .select(`"${column}"`)
@@ -113,18 +158,47 @@ class LookupService {
         throw new Error(`Failed to extract ${column} from ${table}: ${error.message}`);
       }
 
-      // Extract and normalize values
-      const values = data
-        .map(row => this.normalizeText(row[column]))
-        .filter(value => value.length > 0);
+      // Optimized single-pass processing with early filtering
+      const uniqueValues = new Set();
 
-      // Get unique values
-      const uniqueValues = [...new Set(values)].sort();
+      // Special handling for comma-separated tech roles (more efficient)
+      if (column === 'tech_roles_interest') {
+        for (const row of data) {
+          const value = row[column];
+          if (value && typeof value === 'string') {
+            const normalizedValue = this.normalizeText(value);
+            if (normalizedValue.length > 0) {
+              // Split by comma and process each role in single pass
+              const roles = normalizedValue.split(',');
+              for (const role of roles) {
+                const normalizedRole = this.normalizeText(role);
+                if (normalizedRole.length > 0) {
+                  uniqueValues.add(normalizedRole);
+                }
+              }
+            }
+          }
+        }
+      } else {
+        // Normal processing with single pass
+        for (const row of data) {
+          const value = row[column];
+          if (value) {
+            const normalizedValue = this.normalizeText(value);
+            if (normalizedValue.length > 0) {
+              uniqueValues.add(normalizedValue);
+            }
+          }
+        }
+      }
+
+      // Convert to sorted array (more efficient than spread + sort)
+      const sortedValues = Array.from(uniqueValues).sort();
 
       // Cache the result
-      this.setCachedData(cacheKey, uniqueValues);
+      this.setCachedData(cacheKey, sortedValues);
 
-      return uniqueValues;
+      return sortedValues;
     } catch (error) {
       console.error(`[ERROR] extractUniqueValues: ${error.message}`);
       throw error;
@@ -144,31 +218,35 @@ class LookupService {
     }
 
     try {
+      // Optimized query with better performance
       const { data, error } = await supabase
         .from('students')
-        .select('"Tech Stack / Skills"')
-        .not('"Tech Stack / Skills"', 'is', null)
-        .not('"Tech Stack / Skills"', 'eq', '');
+        .select('tech_stack_skills')
+        .not('tech_stack_skills', 'is', null)
+        .not('tech_stack_skills', 'eq', '');
 
       if (error) {
         throw new Error(`Failed to extract tech skills: ${error.message}`);
       }
 
-      // Extract and process skills
+      // Optimized single-pass processing
       const allSkills = new Set();
 
-      data.forEach(row => {
-        const skills = row['Tech Stack / Skills'];
+      for (const row of data) {
+        const skills = row['tech_stack_skills'];
         if (skills && typeof skills === 'string') {
-          // Split by comma and clean each skill
-          const skillList = skills.split(',')
-            .map(skill => this.normalizeText(skill))
-            .filter(skill => skill.length > 0);
-
-          skillList.forEach(skill => allSkills.add(skill));
+          // Split and process skills in single pass
+          const normalizedSkills = skills.split(',');
+          for (const skill of normalizedSkills) {
+            const normalizedSkill = this.normalizeText(skill);
+            if (normalizedSkill.length > 0) {
+              allSkills.add(normalizedSkill);
+            }
+          }
         }
-      });
+      }
 
+      // Convert to sorted array (more efficient)
       const uniqueSkills = Array.from(allSkills).sort();
 
       // Cache the result
@@ -196,28 +274,33 @@ class LookupService {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('"Industry / Sector"')
-        .not('"Industry / Sector"', 'is', null)
-        .not('"Industry / Sector"', 'eq', '');
+        .select('industry_sector')
+        .not('industry_sector', 'is', null)
+        .not('industry_sector', 'eq', '');
 
       if (error) {
         throw new Error(`Failed to get industries with count: ${error.message}`);
       }
 
-      // Count occurrences
+      // Optimized counting with single-pass processing
       const industryCounts = {};
 
-      data.forEach(row => {
-        const industry = this.normalizeText(row['Industry / Sector']);
+      for (const row of data) {
+        const industry = this.normalizeText(row['industry_sector']);
         if (industry) {
           industryCounts[industry] = (industryCounts[industry] || 0) + 1;
         }
-      });
+      }
 
-      // Convert to array and sort by count (descending)
+      // Convert to array and sort by count (descending) with tie-breaker
       const result = Object.entries(industryCounts)
         .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count);
+        .sort((a, b) => {
+          if (b.count !== a.count) {
+            return b.count - a.count; // Primary sort by count descending
+          }
+          return a.name.localeCompare(b.name); // Secondary sort alphabetically
+        });
 
       // Cache the result
       this.setCachedData(cacheKey, result);
@@ -244,28 +327,41 @@ class LookupService {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('"Tech Roles or Fields of Interest"')
-        .not('"Tech Roles or Fields of Interest"', 'is', null)
-        .not('"Tech Roles or Fields of Interest"', 'eq', '');
+        .select('tech_roles_interest')
+        .not('tech_roles_interest', 'is', null)
+        .not('tech_roles_interest', 'eq', '');
 
       if (error) {
         throw new Error(`Failed to get tech roles with count: ${error.message}`);
       }
 
-      // Count occurrences
+      // Optimized counting with single-pass processing
       const roleCounts = {};
 
-      data.forEach(row => {
-        const role = this.normalizeText(row['Tech Roles or Fields of Interest']);
-        if (role) {
-          roleCounts[role] = (roleCounts[role] || 0) + 1;
+      for (const row of data) {
+        const roles = row['tech_roles_interest'];
+        if (roles && typeof roles === 'string') {
+          // Split and process roles in single pass
+          const normalizedRoles = roles.split(',');
+          for (const role of normalizedRoles) {
+            const normalizedRole = this.normalizeText(role);
+            if (normalizedRole.length > 0 && role !== '/' && role !== '\\' && !role.match(/^[/\\]+$/)) {
+              roleCounts[normalizedRole] = (roleCounts[normalizedRole] || 0) + 1;
+            }
+          }
         }
-      });
+      }
 
-      // Convert to array and sort by count (descending)
+      // Convert to array and sort by count (descending) with tie-breaker
       const result = Object.entries(roleCounts)
         .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count);
+        .sort((a, b) => {
+          if (b.count !== a.count) {
+            return b.count - a.count; // Primary sort by count descending
+          }
+          return a.name.localeCompare(b.name); // Secondary sort alphabetically
+        });
+        
 
       // Cache the result
       this.setCachedData(cacheKey, result);
@@ -290,36 +386,43 @@ class LookupService {
     }
 
     try {
+      // Optimized query with better performance
       const { data, error } = await supabase
         .from('students')
-        .select('"Tech Stack / Skills"')
-        .not('"Tech Stack / Skills"', 'is', null)
-        .not('"Tech Stack / Skills"', 'eq', '');
+        .select('tech_stack_skills')
+        .not('tech_stack_skills', 'is', null)
+        .not('tech_stack_skills', 'eq', '');
 
       if (error) {
         throw new Error(`Failed to get tech skills with count: ${error.message}`);
       }
 
-      // Count occurrences
+      // Optimized counting with single-pass processing
       const skillCounts = {};
 
-      data.forEach(row => {
-        const skills = row['Tech Stack / Skills'];
+      for (const row of data) {
+        const skills = row['tech_stack_skills'];
         if (skills && typeof skills === 'string') {
-          const skillList = skills.split(',')
-            .map(skill => this.normalizeText(skill))
-            .filter(skill => skill.length > 0);
-
-          skillList.forEach(skill => {
-            skillCounts[skill] = (skillCounts[skill] || 0) + 1;
-          });
+          // Split and process skills in single pass
+          const normalizedSkills = skills.split(',');
+          for (const skill of normalizedSkills) {
+            const normalizedSkill = this.normalizeText(skill);
+            if (normalizedSkill.length > 0) {
+              skillCounts[normalizedSkill] = (skillCounts[normalizedSkill] || 0) + 1;
+            }
+          }
         }
-      });
+      }
 
-      // Convert to array and sort by count (descending)
+      // Convert to array and sort by count (descending) with tie-breaker
       const result = Object.entries(skillCounts)
         .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count);
+        .sort((a, b) => {
+          if (b.count !== a.count) {
+            return b.count - a.count; // Primary sort by count descending
+          }
+          return a.name.localeCompare(b.name); // Secondary sort alphabetically
+        });
 
       // Cache the result
       this.setCachedData(cacheKey, result);
@@ -332,7 +435,7 @@ class LookupService {
   }
 
   /**
-   * Search in a list with fuzzy matching
+   * Search in a list with fuzzy matching (optimized)
    */
   searchInList(list, query, limit = 10) {
     if (!query || typeof query !== 'string') {
@@ -345,53 +448,62 @@ class LookupService {
       return [];
     }
 
-    // Filter and score matches
-    const matches = list
-      .map(item => {
-        const normalizedItem = typeof item === 'string' ? item.toLowerCase() : item.name?.toLowerCase() || '';
-        let score = 0;
+    // Optimized search with early filtering and scoring
+    const matches = [];
+    const queryLength = normalizedQuery.length;
 
-        // Exact match gets highest score
-        if (normalizedItem === normalizedQuery) {
-          score = 100;
-        }
-        // Starts with query gets high score
-        else if (normalizedItem.startsWith(normalizedQuery)) {
-          score = 80;
-        }
-        // Contains query gets medium score
-        else if (normalizedItem.includes(normalizedQuery)) {
-          score = 60;
-        }
-        // Partial matches get lower score based on position
-        else {
-          const words = normalizedItem.split(' ');
-          for (const word of words) {
-            if (word.startsWith(normalizedQuery)) {
-              score = 40;
-              break;
-            } else if (word.includes(normalizedQuery)) {
-              score = 20;
-              break;
-            }
+    for (const item of list) {
+      const normalizedItem = typeof item === 'string' ? item.toLowerCase() : item.name?.toLowerCase() || '';
+
+      if (normalizedItem.length === 0) continue;
+
+      let score = 0;
+
+      // Exact match gets highest score
+      if (normalizedItem === normalizedQuery) {
+        score = 100;
+      }
+      // Starts with query gets high score
+      else if (normalizedItem.startsWith(normalizedQuery)) {
+        score = 80;
+      }
+      // Contains query gets medium score
+      else if (normalizedItem.includes(normalizedQuery)) {
+        score = 60;
+      }
+      // Partial matches get lower score based on position
+      else {
+        const words = normalizedItem.split(' ');
+        for (const word of words) {
+          if (word.startsWith(normalizedQuery)) {
+            score = 40;
+            break;
+          } else if (word.includes(normalizedQuery)) {
+            score = 20;
+            break;
           }
         }
+      }
 
-        return {
+      // Only add items with positive scores
+      if (score > 0) {
+        matches.push({
           item: typeof item === 'string' ? { name: item } : item,
           score
-        };
-      })
-      .filter(match => match.score > 0)
-      .sort((a, b) => b.score - a.score)
+        });
+      }
+    }
+
+    // Sort by score and limit results (more efficient)
+    matches.sort((a, b) => b.score - a.score);
+
+    return matches
       .slice(0, limit)
       .map(match => match.item);
-
-    return matches;
   }
 
   /**
-   * Get all lookup data in one call
+   * Get all lookup data in one call (optimized)
    */
   async getAllLookupData() {
     const cacheKey = 'all_lookup_data';
@@ -403,6 +515,11 @@ class LookupService {
     }
 
     try {
+      // Ensure cache is warmed for optimal performance
+      await this.warmCache();
+
+      // Since cache is now warmed, most data should be available from cache
+      // This reduces database load significantly
       const [
         industries,
         techRoles,
@@ -412,10 +529,10 @@ class LookupService {
         popularTechRoles,
         popularTechSkills
       ] = await Promise.all([
-        this.extractUniqueValues('companies', 'Industry / Sector'),
-        this.extractUniqueValues('companies', 'Tech Roles or Fields of Interest'),
+        this.extractUniqueValues('companies', 'industry_sector'),
+        this.extractUniqueValues('companies', 'tech_roles_interest'),
         this.extractTechSkills(),
-        this.extractUniqueValues('students', 'Status'),
+        this.extractUniqueValues('students', 'status'),
         this.getIndustriesWithCount(),
         this.getTechRolesWithCount(),
         this.getTechSkillsWithCount()
@@ -431,10 +548,14 @@ class LookupService {
           techRoles: popularTechRoles.slice(0, 10),
           techSkills: popularTechSkills.slice(0, 20)
         },
-        generatedAt: new Date().toISOString()
+        generatedAt: new Date().toISOString(),
+        cacheStatus: {
+          warmed: this.cacheWarmed,
+          totalCached: this.cache.size
+        }
       };
 
-      // Cache the result (with shorter TTL for comprehensive data)
+      // Cache the result with standard TTL
       this.setCachedData(cacheKey, result);
 
       return result;
