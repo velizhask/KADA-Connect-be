@@ -1,0 +1,2482 @@
+{
+	"info": {
+		"_postman_id": "343ce7f5-130b-41f0-a6ab-83502ef67e8a",
+		"name": "KADA-Connect-be - Complete API Test Suite",
+		"description": "Comprehensive API test suite for KADA Connect Backend covering all 41 endpoints with authentication, validation, and error handling tests.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "34071377",
+		"version": {
+			"major": 2,
+			"minor": 0,
+			"patch": 0
+		}
+	},
+	"item": [
+		{
+			"name": "System APIs",
+			"description": "System health and documentation endpoints",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check system health status"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Health check response validation",
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has required fields\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('status', 'OK');",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"    pm.expect(jsonData).to.have.property('timestamp');",
+									"    pm.expect(jsonData).to.have.property('version');",
+									"});",
+									"",
+									"pm.test(\"Response time is acceptable\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(1000);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "API Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api"
+							]
+						},
+						"description": "Get API information and available endpoints"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has API info\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"    pm.expect(jsonData).to.have.property('version');",
+									"    pm.expect(jsonData).to.have.property('endpoints');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "API Documentation",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/docs",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"docs"
+							]
+						},
+						"description": "Get comprehensive API documentation"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Documentation structure is valid\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"    pm.expect(jsonData).to.have.property('version');",
+									"    pm.expect(jsonData).to.have.property('baseUrl');",
+									"    pm.expect(jsonData).to.have.property('endpoints');",
+									"    pm.expect(jsonData).to.have.property('admin');",
+									"});",
+									"",
+									"pm.test(\"All endpoint groups are documented\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const endpoints = jsonData.data.endpoints;",
+									"    pm.expect(endpoints).to.have.property('companies');",
+									"    pm.expect(endpoints).to.have.property('students');",
+									"    pm.expect(endpoints).to.have.property('lookup');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Companies API",
+			"description": "Complete company management endpoints with CRUD operations, search, filtering, and validation",
+			"item": [
+				{
+					"name": "List All Companies",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/companies?page=1&limit=10&sort=companyName&order=asc",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"companies"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number for pagination"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of items per page"
+								},
+								{
+									"key": "sort",
+									"value": "companyName",
+									"description": "Field to sort by"
+								},
+								{
+									"key": "order",
+									"value": "asc",
+									"description": "Sort order (asc/desc)"
+								}
+							]
+						},
+						"description": "List all companies with pagination and sorting"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has pagination data\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('data');",
+									"    pm.expect(jsonData).to.have.property('pagination');",
+									"    pm.expect(jsonData.data.pagination).to.have.property('page');",
+									"    pm.expect(jsonData.data.pagination).to.have.property('limit');",
+									"    pm.expect(jsonData.data.pagination).to.have.property('total');",
+									"});",
+									"",
+									"pm.test(\"Companies have required fields\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data. && jsonData.data..length > 0) {",
+									"        const company = jsonData.data.[0];",
+									"        pm.expect(company).to.have.property('id');",
+									"        pm.expect(company).to.have.property('companyName');",
+									"        pm.expect(company).to.have.property('industry');",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Response time is acceptable\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Search Companies",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/companies/search?q=technology&page=1&limit=5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"companies",
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "technology",
+									"description": "Search query term"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "5",
+									"description": "Results per page"
+								}
+							]
+						},
+						"description": "Search companies by name, industry, or description"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Search results contain search term\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data. && jsonData.data..length > 0) {",
+									"        const searchTerm = pm.request.url.query.get('q');",
+									"        const found = jsonData.data..some(company => {",
+									"            return JSON.stringify(company).toLowerCase().includes(searchTerm.toLowerCase());",
+									"        });",
+									"        pm.expect(found).to.be.true;",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get All Industries",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/companies/industries",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"companies",
+								"industries"
+							]
+						},
+						"description": "Get list of all unique industries from companies"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Industries response is an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Industries are strings\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        jsonData.data.forEach(industry => {",
+									"            pm.expect(industry).to.be.a('string');",
+									"        });",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get All Tech Roles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/companies/tech-roles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"companies",
+								"tech-roles"
+							]
+						},
+						"description": "Get list of all unique tech roles from companies"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Tech roles response is an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Company Statistics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/companies/stats",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"companies",
+								"stats"
+							]
+						},
+						"description": "Get comprehensive company statistics"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Stats response has required fields\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('totalCompanies');",
+									"    pm.expect(jsonData).to.have.property('industryDistribution');",
+									"    pm.expect(jsonData).to.have.property('techRoleDistribution');",
+									"    pm.expect(jsonData).to.have.property('lastUpdated');",
+									"});",
+									"",
+									"pm.test(\"Stats data types are correct\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.totalCompanies).to.be.a('number');",
+									"    pm.expect(jsonData.data.industryDistribution).to.be.an('object');",
+									"    pm.expect(jsonData.data.techRoleDistribution).to.be.an('object');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Validate Company Logo",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"logoUrl\": \"https://example.com/logo.png\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/companies/validate-logo",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"companies",
+								"validate-logo"
+							]
+						},
+						"description": "Validate company logo URL accessibility and format"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Validation response has required fields\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('isValid');",
+									"    pm.expect(jsonData).to.have.property('logoUrl');",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Company by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/companies/{{companyId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"companies",
+								"{{companyId}}"
+							]
+						},
+						"description": "Get specific company details by ID"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Company has all required fields\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('companyName');",
+									"    pm.expect(jsonData).to.have.property('industry');",
+									"    pm.expect(jsonData).to.have.property('companySummary');",
+									"    pm.expect(jsonData).to.have.property('techRoles');",
+									"});",
+									"",
+									"pm.test(\"Company ID matches requested ID\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const requestedId = pm.variables.get('companyId');",
+									"    pm.expect(jsonData.data.id.toString()).to.equal(requestedId);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Create New Company",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Admin-Key",
+								"value": "{{adminKey}}",
+								"description": "Admin authentication key"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"emailAddress\": \"test-company{{$randomInt}}@example.com\",\n  \"companyName\": \"Test Company {{$randomInt}}\",\n  \"companySummary\": \"This is a test company for API validation.\",\n  \"industry\": \"Technology\",\n  \"companyWebsite\": \"https://testcompany{{$randomInt}}.com\",\n  \"companyLogo\": \"https://example.com/logo.png\",\n  \"techRoles\": \"Software Engineer, Data Scientist, Frontend Developer\",\n  \"preferredSkillsets\": \"JavaScript, Python, React, SQL\",\n  \"contactPersonName\": \"Test Contact\",\n  \"contactEmailAddress\": \"contact@example.com\",\n  \"contactPhoneNumber\": \"+1234567890\",\n  \"visibleContactInfo\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/companies",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"companies"
+							]
+						},
+						"description": "Create a new company (Admin only)"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Created company has valid ID\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData.data.id).to.be.a('number');",
+									"    pm.expect(jsonData.data.id).to.be.above(0);",
+									"});",
+									"",
+									"pm.test(\"Company data matches request\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const requestBody = JSON.parse(pm.request.body.raw);",
+									"    pm.expect(jsonData.data.companyName).to.equal(requestBody.companyName);",
+									"    pm.expect(jsonData.data.emailAddress).to.equal(requestBody.emailAddress);",
+									"});",
+									"",
+									"// Store created company ID for subsequent tests",
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    pm.environment.set('createdCompanyId', jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Company (Full Update)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Admin-Key",
+								"value": "{{adminKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"emailAddress\": \"updated-company@example.com\",\n  \"companyName\": \"Updated Test Company\",\n  \"companySummary\": \"This is an updated test company summary.\",\n  \"industry\": \"Information Technology\",\n  \"companyWebsite\": \"https://updated-testcompany.com\",\n  \"companyLogo\": \"https://example.com/updated-logo.png\",\n  \"techRoles\": \"Full Stack Developer, DevOps Engineer, Backend Developer\",\n  \"preferredSkillsets\": \"Node.js, AWS, Docker, MongoDB\",\n  \"contactPersonName\": \"Updated Contact\",\n  \"contactEmailAddress\": \"updated-contact@example.com\",\n  \"contactPhoneNumber\": \"+9876543210\",\n  \"visibleContactInfo\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/companies/{{createdCompanyId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"companies",
+								"{{createdCompanyId}}"
+							]
+						},
+						"description": "Update company details completely (Admin only)"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Updated company data matches request\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const requestBody = JSON.parse(pm.request.body.raw);",
+									"    pm.expect(jsonData.data.companyName).to.equal(requestBody.companyName);",
+									"    pm.expect(jsonData.data.emailAddress).to.equal(requestBody.emailAddress);",
+									"    pm.expect(jsonData.data.industry).to.equal(requestBody.industry);",
+									"});",
+									"",
+									"pm.test(\"Company ID remains unchanged\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const originalId = pm.environment.get('createdCompanyId');",
+									"    pm.expect(jsonData.data.id.toString()).to.equal(originalId);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Company (Partial Update)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Admin-Key",
+								"value": "{{adminKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"companyName\": \"Partially Updated Company Name\",\n  \"techRoles\": \"AI Engineer, Machine Learning Specialist\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/companies/{{createdCompanyId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"companies",
+								"{{createdCompanyId}}"
+							]
+						},
+						"description": "Update specific company fields (Admin only)"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Partial update applied correctly\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const requestBody = JSON.parse(pm.request.body.raw);",
+									"    ",
+									"    // Check that provided fields were updated",
+									"    pm.expect(jsonData.data.companyName).to.equal(requestBody.companyName);",
+									"    pm.expect(jsonData.data.techRoles).to.equal(requestBody.techRoles);",
+									"    ",
+									"    // Verify this is a patch operation (only specified fields updated)",
+									"    pm.expect(jsonData.data.companyName).to.not.be.undefined;",
+									"    pm.expect(jsonData.data.techRoles).to.not.be.undefined;",
+									"});",
+									"",
+									"pm.test(\"Other fields remain unchanged\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    ",
+									"    // These fields should NOT be null/undefined after a proper PATCH",
+									"    pm.expect(jsonData.data.emailAddress).to.not.be.null;",
+									"    pm.expect(jsonData.data.emailAddress).to.not.be.undefined;",
+									"    pm.expect(jsonData.data.industry).to.not.be.null;",
+									"    pm.expect(jsonData.data.industry).to.not.be.undefined;",
+									"    pm.expect(jsonData.data.companySummary).to.not.be.null;",
+									"    pm.expect(jsonData.data.companySummary).to.not.be.undefined;",
+									"    ",
+									"    // Verify existing data types",
+									"    pm.expect(jsonData.data.emailAddress).to.be.a('string');",
+									"    pm.expect(jsonData.data.industry).to.be.a('string');",
+									"});",
+									"",
+									"pm.test(\"PATCH operation success message\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('success', true);",
+									"    pm.expect(jsonData.data.message).to.include('patched');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Delete Company",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Admin-Key",
+								"value": "{{adminKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/companies/{{createdCompanyId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"companies",
+								"{{createdCompanyId}}"
+							]
+						},
+						"description": "Delete a company (Admin only)"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK or 204 No Content\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+									"});",
+									"",
+									"pm.test(\"Delete confirmation message\", function () {",
+									"    if (pm.response.code === 200) {",
+									"        const jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property('message');",
+									"    }",
+									"});",
+									"",
+									"// Clear the created company ID",
+									"pm.environment.unset('createdCompanyId');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Set a default company ID if not already set",
+							"if (!pm.environment.get('companyId')) {",
+							"    pm.environment.set('companyId', '1');",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "Students API",
+			"description": "Complete student management endpoints with CRUD operations, search, filtering, and file validation",
+			"item": [
+				{
+					"name": "List All Students",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students?page=1&limit=10&sort=fullName&order=asc",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number for pagination"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of items per page"
+								},
+								{
+									"key": "sort",
+									"value": "fullName",
+									"description": "Field to sort by"
+								},
+								{
+									"key": "order",
+									"value": "asc",
+									"description": "Sort order (asc/desc)"
+								}
+							]
+						},
+						"description": "List all students with pagination and sorting"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has pagination data\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('data');",
+									"    pm.expect(jsonData).to.have.property('pagination');",
+									"    pm.expect(jsonData.data.pagination).to.have.property('page');",
+									"    pm.expect(jsonData.data.pagination).to.have.property('limit');",
+									"    pm.expect(jsonData.data.pagination).to.have.property('total');",
+									"});",
+									"",
+									"pm.test(\"Students have required fields\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data. && jsonData.data..length > 0) {",
+									"        const student = jsonData.data.[0];",
+									"        pm.expect(student).to.have.property('id');",
+									"        pm.expect(student).to.have.property('fullName');",
+									"        pm.expect(student).to.have.property('status');",
+									"        pm.expect(student).to.have.property('university');",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Response time is acceptable\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Search Students",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students/search?q=developer&page=1&limit=5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "developer",
+									"description": "Search query term"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "5",
+									"description": "Results per page"
+								}
+							]
+						},
+						"description": "Search students by name, skills, or university"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Search results contain search term\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data. && jsonData.data..length > 0) {",
+									"        const searchTerm = pm.request.url.query.get('q');",
+									"        const found = jsonData.data..some(student => {",
+									"            return JSON.stringify(student).toLowerCase().includes(searchTerm.toLowerCase());",
+									"        });",
+									"        pm.expect(found).to.be.true;",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Students by Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students/status/Current%20Trainee",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								"status",
+								"Current Trainee"
+							]
+						},
+						"description": "Get students filtered by status (Current Trainee, Alumni, etc.)"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"All students have correct status\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data. && jsonData.data..length > 0) {",
+									"        jsonData.data..forEach(student => {",
+									"            pm.expect(student.status).to.equal('Current Trainee');",
+									"        });",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Response has pagination data\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('pagination');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get All Universities",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students/universities",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								"universities"
+							]
+						},
+						"description": "Get list of all unique universities from students"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Universities response is an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Universities are strings\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        jsonData.data.forEach(university => {",
+									"            pm.expect(university).to.be.a('string');",
+									"        });",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get All Majors",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students/majors",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								"majors"
+							]
+						},
+						"description": "Get list of all unique majors from students"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Majors response is an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Preferred Industries",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students/industries",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								"industries"
+							]
+						},
+						"description": "Get list of all preferred industries from students"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Industries response is an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Tech Skills",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students/skills",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								"skills"
+							]
+						},
+						"description": "Get list of all unique tech skills from students"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Skills response is an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Student Statistics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students/stats",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								"stats"
+							]
+						},
+						"description": "Get comprehensive student statistics"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Stats response has required fields\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('totalStudents');",
+									"    pm.expect(jsonData).to.have.property('statusDistribution');",
+									"    pm.expect(jsonData).to.have.property('universityDistribution');",
+									"    pm.expect(jsonData).to.have.property('skillsDistribution');",
+									"    pm.expect(jsonData).to.have.property('lastUpdated');",
+									"});",
+									"",
+									"pm.test(\"Stats data types are correct\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.totalStudents).to.be.a('number');",
+									"    pm.expect(jsonData.data.statusDistribution).to.be.an('object');",
+									"    pm.expect(jsonData.data.universityDistribution).to.be.an('object');",
+									"    pm.expect(jsonData.data.skillsDistribution).to.be.an('object');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Validate CV Upload",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cvUrl\": \"https://example.com/cv.pdf\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/students/validate-cv",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								"validate-cv"
+							]
+						},
+						"description": "Validate student CV URL accessibility and format"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Validation response has required fields\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('isValid');",
+									"    pm.expect(jsonData).to.have.property('cvUrl');",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Validate Profile Photo",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"photoUrl\": \"https://example.com/photo.png\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/students/validate-photo",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								"validate-photo"
+							]
+						},
+						"description": "Validate student profile photo URL accessibility and format"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Validation response has required fields\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('isValid');",
+									"    pm.expect(jsonData).to.have.property('photoUrl');",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Student by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students/{{studentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								"{{studentId}}"
+							]
+						},
+						"description": "Get specific student details by ID"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Student has all required fields\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('fullName');",
+									"    pm.expect(jsonData).to.have.property('status');",
+									"    pm.expect(jsonData).to.have.property('university');",
+									"    pm.expect(jsonData).to.have.property('major');",
+									"    pm.expect(jsonData).to.have.property('techStack');",
+									"});",
+									"",
+									"pm.test(\"Student ID matches requested ID\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const requestedId = pm.variables.get('studentId');",
+									"    pm.expect(jsonData.data.id.toString()).to.equal(requestedId);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Create New Student",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Admin-Key",
+								"value": "{{adminKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Test Student {{$randomInt}}\",\n  \"status\": \"Current Trainee\",\n  \"university\": \"Test University\",\n  \"major\": \"Computer Science\",\n  \"preferredIndustry\": \"Technology\",\n  \"techStack\": \"JavaScript, React, Node.js, Python\",\n  \"selfIntroduction\": \"I am a passionate software developer interested in full-stack development.\",\n  \"cvUpload\": \"https://example.com/cv.pdf\",\n  \"profilePhoto\": \"https://example.com/photo.png\",\n  \"linkedin\": \"https://linkedin.com/in/teststudent\",\n  \"portfolioLink\": \"https://teststudent.com\",\n  \"phoneNumber\": \"+1234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/students",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students"
+							]
+						},
+						"description": "Create a new student (Admin only)"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Created student has valid ID\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData.data.id).to.be.a('number');",
+									"    pm.expect(jsonData.data.id).to.be.above(0);",
+									"});",
+									"",
+									"pm.test(\"Student data matches request\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const requestBody = JSON.parse(pm.request.body.raw);",
+									"    pm.expect(jsonData.data.fullName).to.equal(requestBody.fullName);",
+									"    pm.expect(jsonData.data.status).to.equal(requestBody.status);",
+									"    pm.expect(jsonData.data.university).to.equal(requestBody.university);",
+									"});",
+									"",
+									"// Store created student ID for subsequent tests",
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    pm.environment.set('createdStudentId', jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Student (Full Update)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Admin-Key",
+								"value": "{{adminKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Updated Test Student\",\n  \"status\": \"Alumni\",\n  \"university\": \"Updated University\",\n  \"major\": \"Software Engineering\",\n  \"preferredIndustry\": \"Information Technology\",\n  \"techStack\": \"TypeScript, Angular, Django, PostgreSQL\",\n  \"selfIntroduction\": \"I am an experienced software engineer specializing in backend development.\",\n  \"cvUpload\": \"https://example.com/updated-cv.pdf\",\n  \"profilePhoto\": \"https://example.com/updated-photo.png\",\n  \"linkedin\": \"https://linkedin.com/in/updatedstudent\",\n  \"portfolioLink\": \"https://updatedstudent.com\",\n  \"phoneNumber\": \"+9876543210\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/students/{{createdStudentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								"{{createdStudentId}}"
+							]
+						},
+						"description": "Update student details completely (Admin only)"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Updated student data matches request\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const requestBody = JSON.parse(pm.request.body.raw);",
+									"    pm.expect(jsonData.data.fullName).to.equal(requestBody.fullName);",
+									"    pm.expect(jsonData.data.status).to.equal(requestBody.status);",
+									"    pm.expect(jsonData.data.university).to.equal(requestBody.university);",
+									"    pm.expect(jsonData.data.major).to.equal(requestBody.major);",
+									"});",
+									"",
+									"pm.test(\"Student ID remains unchanged\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const originalId = pm.environment.get('createdStudentId');",
+									"    pm.expect(jsonData.data.id.toString()).to.equal(originalId);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Student (Partial Update)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Admin-Key",
+								"value": "{{adminKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Partially Updated Student Name\",\n  \"techStack\": \"React Native, Firebase, GraphQL\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/students/{{createdStudentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								"{{createdStudentId}}"
+							]
+						},
+						"description": "Update specific student fields (Admin only)"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Partial update applied correctly\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const requestBody = JSON.parse(pm.request.body.raw);",
+									"    ",
+									"    // Check that provided fields were updated",
+									"    pm.expect(jsonData.data.fullName).to.equal(requestBody.fullName);",
+									"    pm.expect(jsonData.data.techStack).to.equal(requestBody.techStack);",
+									"    ",
+									"    // Verify this is a patch operation (only specified fields updated)",
+									"    pm.expect(jsonData.data.fullName).to.not.be.undefined;",
+									"    pm.expect(jsonData.data.techStack).to.not.be.undefined;",
+									"});",
+									"",
+									"pm.test(\"Other fields remain unchanged\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    ",
+									"    // These fields should NOT be null/undefined after a proper PATCH",
+									"    pm.expect(jsonData.data.status).to.not.be.null;",
+									"    pm.expect(jsonData.data.status).to.not.be.undefined;",
+									"    pm.expect(jsonData.data.university).to.not.be.null;",
+									"    pm.expect(jsonData.data.university).to.not.be.undefined;",
+									"    pm.expect(jsonData.data.major).to.not.be.null;",
+									"    pm.expect(jsonData.data.major).to.not.be.undefined;",
+									"    pm.expect(jsonData.data.preferredIndustry).to.not.be.null;",
+									"    pm.expect(jsonData.data.preferredIndustry).to.not.be.undefined;",
+									"    ",
+									"    // Verify existing data types",
+									"    pm.expect(jsonData.data.status).to.be.a('string');",
+									"    pm.expect(jsonData.data.university).to.be.a('string');",
+									"    pm.expect(jsonData.data.major).to.be.a('string');",
+									"});",
+									"",
+									"pm.test(\"PATCH operation success message\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('success', true);",
+									"    pm.expect(jsonData.data.message).to.include('patched');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Delete Student",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Admin-Key",
+								"value": "{{adminKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/students/{{createdStudentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								"{{createdStudentId}}"
+							]
+						},
+						"description": "Delete a student (Admin only)"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK or 204 No Content\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+									"});",
+									"",
+									"pm.test(\"Delete confirmation message\", function () {",
+									"    if (pm.response.code === 200) {",
+									"        const jsonData = pm.response.json();",
+									"        pm.expect(jsonData).to.have.property('message');",
+									"    }",
+									"});",
+									"",
+									"// Clear the created student ID",
+									"pm.environment.unset('createdStudentId');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Set a default student ID if not already set",
+							"if (!pm.environment.get('studentId')) {",
+							"    pm.environment.set('studentId', '1');",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "Lookup API",
+			"description": "Reference data endpoints for industries, tech roles, skills, and caching",
+			"item": [
+				{
+					"name": "Get All Unique Industries",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/industries",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"industries"
+							]
+						},
+						"description": "Get all unique industries from both companies and students"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Industries response is an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Industries are unique strings\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        const uniqueIndustries = [...new Set(jsonData)];",
+									"        pm.expect(uniqueIndustries.length).to.equal(jsonData.data.length);",
+									"        jsonData.data.forEach(industry => {",
+									"            pm.expect(industry).to.be.a('string');",
+									"        });",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Response time is acceptable\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(1500);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get All Unique Tech Roles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/tech-roles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tech-roles"
+							]
+						},
+						"description": "Get all unique tech roles from companies"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Tech roles response is an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Tech roles are unique strings\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        const uniqueRoles = [...new Set(jsonData)];",
+									"        pm.expect(uniqueRoles.length).to.equal(jsonData.data.length);",
+									"        jsonData.data.forEach(role => {",
+									"            pm.expect(role).to.be.a('string');",
+									"        });",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Tech Role Categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/tech-role-categories",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tech-role-categories"
+							]
+						},
+						"description": "Get tech role categories (Frontend, Backend, Full Stack, etc.)"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Categories response is an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Categories are valid strings\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        jsonData.data.forEach(category => {",
+									"            pm.expect(category).to.be.a('string');",
+									"            pm.expect(category).to.not.be.empty;",
+									"        });",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Tech Roles by Category",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/tech-roles/category/frontend",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tech-roles",
+								"category",
+								"frontend"
+							]
+						},
+						"description": "Get tech roles filtered by specific category"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Roles by category response is an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Roles are relevant to category\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        const category = pm.request.url.path[pm.request.url.path.length - 1];",
+									"        pm.expect(category).to.be.oneOf(['frontend', 'backend', 'fullstack', 'devops', 'mobile', 'data']);",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Search Industries",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/industries?q=tech",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"industries"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "tech",
+									"description": "Search query for industries"
+								}
+							]
+						},
+						"description": "Search industries with query parameter"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Search results contain query term\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const searchTerm = pm.request.url.query.get('q');",
+									"    if (jsonData.data.length > 0) {",
+									"        const found = jsonData.data.some(industry => {",
+									"            return industry.toLowerCase().includes(searchTerm.toLowerCase());",
+									"        });",
+									"        pm.expect(found).to.be.true;",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Search results are an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Search Tech Roles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/tech-roles?q=engineer",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"tech-roles"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "engineer",
+									"description": "Search query for tech roles"
+								}
+							]
+						},
+						"description": "Search tech roles with query parameter"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Search results contain query term\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const searchTerm = pm.request.url.query.get('q');",
+									"    if (jsonData.data.length > 0) {",
+									"        const found = jsonData.data.some(role => {",
+									"            return role.toLowerCase().includes(searchTerm.toLowerCase());",
+									"        });",
+									"        pm.expect(found).to.be.true;",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Tech Skill Suggestions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/suggestions/tech-skills",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"suggestions",
+								"tech-skills"
+							]
+						},
+						"description": "Get popular tech skill suggestions for autocomplete"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Skill suggestions response is an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Skills are valid strings\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        jsonData.data.forEach(skill => {",
+									"            pm.expect(skill).to.be.a('string');",
+									"            pm.expect(skill).to.not.be.empty;",
+									"        });",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Validate Tech Skills Array",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"skills\": [\"JavaScript\", \"React\", \"Node.js\", \"Python\", \"SQL\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/validate/tech-skills",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"validate",
+								"tech-skills"
+							]
+						},
+						"description": "Validate tech skills array against known skills database"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Validation response has required fields\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('isValid');",
+									"    pm.expect(jsonData).to.have.property('skills');",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"    pm.expect(jsonData).to.have.property('suggestions');",
+									"});",
+									"",
+									"pm.test(\"Skills array is preserved in response\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const requestBody = JSON.parse(pm.request.body.raw);",
+									"    pm.expect(jsonData.data.skills).to.deep.equal(requestBody.skills);",
+									"});",
+									"",
+									"pm.test(\"Suggestions are provided if invalid skills\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (!jsonData.data.isValid) {",
+									"        pm.expect(jsonData.data.suggestions).to.be.an('array');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get All Lookup Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/lookup/all",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"lookup",
+								"all"
+							]
+						},
+						"description": "Get all lookup data in one API call"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"All lookup data is present\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('industries');",
+									"    pm.expect(jsonData).to.have.property('techRoles');",
+									"    pm.expect(jsonData).to.have.property('techRoleCategories');",
+									"    pm.expect(jsonData).to.have.property('techSkills');",
+									"    pm.expect(jsonData).to.have.property('universities');",
+									"    pm.expect(jsonData).to.have.property('majors');",
+									"});",
+									"",
+									"pm.test(\"All data types are arrays\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    Object.keys(jsonData).forEach(key => {",
+									"        pm.expect(jsonData[key]).to.be.an('array');",
+									"    });",
+									"});",
+									"",
+									"pm.test(\"Data caching info is included\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('cachedAt');",
+									"    pm.expect(jsonData).to.have.property('expiresAt');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Popular Industries",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/popular/industries?limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"popular",
+								"industries"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of results to return"
+								}
+							]
+						},
+						"description": "Get most popular industries by count"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Popular industries are sorted by count\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 1) {",
+									"        for (let i = 0; i < jsonData.data.length - 1; i++) {",
+									"            pm.expect(jsonData[i].count).to.be.at.least(jsonData[i + 1].count);",
+									"        }",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Each item has industry and count\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        jsonData.data.forEach(item => {",
+									"            pm.expect(item).to.have.property('industry');",
+									"            pm.expect(item).to.have.property('count');",
+									"            pm.expect(item.count).to.be.a('number');",
+									"        });",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Popular Tech Roles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/popular/tech-roles?limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"popular",
+								"tech-roles"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of results to return"
+								}
+							]
+						},
+						"description": "Get most popular tech roles by count"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Popular tech roles are sorted by count\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 1) {",
+									"        for (let i = 0; i < jsonData.data.length - 1; i++) {",
+									"            pm.expect(jsonData[i].count).to.be.at.least(jsonData[i + 1].count);",
+									"        }",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Each item has techRole and count\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        jsonData.data.forEach(item => {",
+									"            pm.expect(item).to.have.property('techRole');",
+									"            pm.expect(item).to.have.property('count');",
+									"            pm.expect(item.count).to.be.a('number');",
+									"        });",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Popular Tech Skills",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/popular/tech-skills?limit=15",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"popular",
+								"tech-skills"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "15",
+									"description": "Number of results to return"
+								}
+							]
+						},
+						"description": "Get most popular tech skills by count"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Popular tech skills are sorted by count\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 1) {",
+									"        for (let i = 0; i < jsonData.data.length - 1; i++) {",
+									"            pm.expect(jsonData[i].count).to.be.at.least(jsonData[i + 1].count);",
+									"        }",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Each item has skill and count\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        jsonData.data.forEach(item => {",
+									"            pm.expect(item).to.have.property('skill');",
+									"            pm.expect(item).to.have.property('count');",
+									"            pm.expect(item.count).to.be.a('number');",
+									"        });",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Clear Lookup Cache",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Admin-Key",
+								"value": "{{adminKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/cache/clear",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"cache",
+								"clear"
+							]
+						},
+						"description": "Clear lookup cache (Admin only)"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Cache clear confirmation\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"    pm.expect(jsonData).to.have.property('cacheCleared');",
+									"    pm.expect(jsonData.data.cacheCleared).to.be.true;",
+									"});",
+									"",
+									"pm.test(\"Cache cleared timestamp\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('clearedAt');",
+									"    pm.expect(new Date(jsonData.data.clearedAt)).to.be.a('date');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Cache Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/cache/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"cache",
+								"status"
+							]
+						},
+						"description": "Get current cache status and statistics"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Cache status has required fields\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('status');",
+									"    pm.expect(jsonData).to.have.property('cacheEnabled');",
+									"    pm.expect(jsonData).to.have.property('cachedAt');",
+									"    pm.expect(jsonData).to.have.property('expiresAt');",
+									"    pm.expect(jsonData).to.have.property('timeToExpiry');",
+									"});",
+									"",
+									"pm.test(\"Cache status values are valid\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.cacheEnabled).to.be.a('boolean');",
+									"    pm.expect(jsonData.data.timeToExpiry).to.be.a('number');",
+									"    pm.expect(['active', 'expired', 'disabled']).to.include(jsonData.data.status);",
+									"});",
+									"",
+									"pm.test(\"Cache entries information\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.cacheEnabled) {",
+									"        pm.expect(jsonData).to.have.property('entries');",
+									"        pm.expect(jsonData.data.entries).to.be.an('object');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global pre-request script for all requests",
+					"",
+					"// Set current timestamp for testing",
+					"pm.environment.set('currentTimestamp', new Date().toISOString());",
+					"",
+					"// Generate random test data if needed",
+					"if (!pm.environment.get('randomSeed')) {",
+					"    pm.environment.set('randomSeed', Math.random().toString(36).substring(7));",
+					"}",
+					"",
+					"// Log request details for debugging",
+					"console.log('[' + new Date().toISOString() + '] ' + pm.request.method + ' ' + pm.request.url.getPath());",
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script for all responses",
+					"",
+					"// Log response details for debugging",
+					"console.log('[' + new Date().toISOString() + '] Response: ' + pm.response.code + ' (' + pm.response.responseTime + 'ms)');",
+					"",
+					"// Global response time test",
+					"pm.test(\"Response time is reasonable\", function () {",
+					"    const maxTime = pm.request.method === 'GET' ? 3000 : 5000;",
+					"    pm.expect(pm.response.responseTime).to.be.below(maxTime);",
+					"});",
+					"",
+					"// Content type validation for successful responses",
+					"if (pm.response.code >= 200 && pm.response.code < 300) {",
+					"    pm.test(\"Content-Type is application/json\", function () {",
+					"        pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+					"    });",
+					"}",
+					"",
+					"// Error response validation",
+					"if (pm.response.code >= 400) {",
+					"    pm.test(\"Error response has proper structure\", function () {",
+					"        try {",
+					"            const jsonData = pm.response.json();",
+					"            pm.expect(jsonData).to.have.property('error');",
+					"            pm.expect(jsonData).to.have.property('message');",
+					"        } catch (e) {",
+					"            // If response is not JSON, this test will fail silently",
+					"        }",
+					"    });",
+					"}",
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3001",
+			"type": "string",
+			"description": "Base URL for API requests"
+		},
+		{
+			"key": "adminKey",
+			"value": "your-admin-api-key",
+			"type": "string",
+			"description": "Admin authentication key for protected operations"
+		},
+		{
+			"key": "companyId",
+			"value": "2",
+			"type": "string",
+			"description": "Test company ID for GET requests"
+		},
+		{
+			"key": "studentId",
+			"value": "2",
+			"type": "string",
+			"description": "Test student ID for GET requests"
+		},
+		{
+			"key": "createdCompanyId",
+			"value": "",
+			"type": "string",
+			"description": "ID of company created during tests (dynamic)"
+		},
+		{
+			"key": "createdStudentId",
+			"value": "",
+			"type": "string",
+			"description": "ID of student created during tests (dynamic)"
+		}
+	]
+}

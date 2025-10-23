@@ -1,6 +1,18 @@
 const validateRequest = (schema) => {
   return (req, res, next) => {
-    const { error } = schema.validate(req.query || req.body || req.params);
+    // Determine which request object to validate based on HTTP method
+    let dataToValidate;
+
+    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+      dataToValidate = req.body;
+    } else if (req.method === 'GET' || req.method === 'DELETE') {
+      dataToValidate = req.query || req.params;
+    } else {
+      // Fallback to checking all in order
+      dataToValidate = req.body || req.query || req.params;
+    }
+
+    const { error } = schema.validate(dataToValidate);
 
     if (error) {
       const errorMessage = error.details.map(detail => detail.message).join(', ');
@@ -45,6 +57,20 @@ const validateCompanyId = (req, res, next) => {
     return res.status(400).json({
       success: false,
       message: 'Valid company ID is required',
+      data: null
+    });
+  }
+
+  next();
+};
+
+const validateStudentId = (req, res, next) => {
+  const { id } = req.params;
+
+  if (!id || isNaN(id) || parseInt(id) < 1) {
+    return res.status(400).json({
+      success: false,
+      message: 'Valid student ID is required',
       data: null
     });
   }
@@ -103,6 +129,29 @@ const validateLogoUrl = (req, res, next) => {
   next();
 };
 
+const validateStudentStatus = (req, res, next) => {
+  const { status } = req.params;
+
+  if (!status) {
+    return res.status(400).json({
+      success: false,
+      message: 'Status parameter is required',
+      data: null
+    });
+  }
+
+  const validStatuses = ['Current Trainee', 'Alumni'];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid status. Must be "Current Trainee" or "Alumni"',
+      data: null
+    });
+  }
+
+  next();
+};
+
 const sanitizeInput = (req, res, next) => {
   // Sanitize query parameters
   if (req.query) {
@@ -129,7 +178,9 @@ module.exports = {
   validateRequest,
   validatePagination,
   validateCompanyId,
+  validateStudentId,
   validateSearchQuery,
   validateLogoUrl,
+  validateStudentStatus,
   sanitizeInput
 };

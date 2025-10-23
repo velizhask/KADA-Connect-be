@@ -47,7 +47,7 @@ app.get('/health', (req, res) => {
 
 // Import routes
 const companyRoutes = require('./routes/companies');
-const traineeRoutes = require('./routes/trainees');
+const studentRoutes = require('./routes/students');
 const lookupRoutes = require('./routes/lookup');
 
 // Import middleware
@@ -61,7 +61,7 @@ app.get('/api', (req, res) => {
     endpoints: {
       health: '/health',
       companies: '/api/companies',
-      trainees: '/api/trainees',
+      students: '/api/students',
       industries: '/api/industries',
       techRoles: '/api/tech-roles',
       docs: '/api/docs'
@@ -86,18 +86,18 @@ app.get('/api/docs', (req, res) => {
         'POST /companies/search': 'Advanced company search',
         'POST /companies/validate-logo': 'Validate company logo upload'
       },
-      trainees: {
-        'GET /trainees': 'List trainees with filtering and pagination',
-        'GET /trainees/:id': 'Get trainee by ID',
-        'POST /trainees': 'Create new trainee (admin only)',
-        'PUT /trainees/:id': 'Update trainee (admin only)',
-        'DELETE /trainees/:id': 'Delete trainee (admin only)',
-        'GET /trainees/stats': 'Get trainee statistics',
-        'GET /trainees/featured': 'Get featured trainees',
-        'GET /trainees/status-options': 'Get trainee status options',
-        'POST /trainees/search': 'Advanced trainee search',
-        'POST /trainees/validate-cv': 'Validate trainee CV upload',
-        'POST /trainees/validate-photo': 'Validate trainee photo upload'
+      students: {
+        'GET /students': 'List students with filtering and pagination',
+        'GET /students/:id': 'Get student by ID',
+        'POST /students': 'Create new student (admin only)',
+        'PUT /students/:id': 'Update student (admin only)',
+        'DELETE /students/:id': 'Delete student (admin only)',
+        'GET /students/stats': 'Get student statistics',
+        'GET /students/featured': 'Get featured students',
+        'GET /students/status-options': 'Get student status options',
+        'POST /students/search': 'Advanced student search',
+        'POST /students/validate-cv': 'Validate student CV upload',
+        'POST /students/validate-photo': 'Validate student photo upload'
       },
       lookup: {
         'GET /industries': 'Get industries list',
@@ -124,7 +124,7 @@ app.get('/api/docs', (req, res) => {
 
 // Mount API routes
 app.use('/api/companies', companyRoutes);
-app.use('/api/trainees', traineeRoutes);
+app.use('/api/students', studentRoutes);
 app.use('/api', lookupRoutes);
 
 // 404 handler

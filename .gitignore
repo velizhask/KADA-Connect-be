@@ -30,11 +30,11 @@ coverage/
 
 # files
 .claude/
-scripts/upload-images.js
 .mcp.json
 CLAUDE.md
 prd.md
-API_DOCUMENTATION.md
+/docs
+/collection/KADA-Connect-Staging-Environment.postman_environment.json
 
 # Dependency directories
 node_modules/
