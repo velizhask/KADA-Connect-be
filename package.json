@@ -1,22 +1,38 @@
 {
   "name": "KADA-Connect-be",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prod": "NODE_ENV=production node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "docker:build": "docker build -t kada-connect-backend .",
+    "docker:run": "docker run -p 10000:10000 --env-file .env kada-connect-backend"
   },
+  "keywords": [
+    "nodejs",
+    "express",
+    "api",
+    "supabase",
+    "kada",
+    "backend"
+  ],
   "author": "rasya",
   "license": "ISC",
-  "description": "",
+  "description": "KADA Connect Backend API - A Node.js/Express backend connecting KADA trainees with companies",
   "dependencies": {
     "@supabase/supabase-js": "^2.76.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
-    "joi": "^18.0.1",
+    "joi": "^18.0.1"
+  },
+  "devDependencies": {
     "nodemon": "^3.1.10"
   }
 }
