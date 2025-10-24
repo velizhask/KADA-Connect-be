@@ -1,0 +1,69 @@
+# KADA Connect Backend - Render Deployment Configuration
+# Deploy this Node.js/Express backend to Render with optimal settings
+
+services:
+  # Web Service Configuration
+  - type: web
+    name: kada-connect-backend
+    runtime: node
+    plan: free
+    region: singapore
+
+    # Build Configuration
+    buildCommand: "npm install --production"
+    startCommand: "npm start"
+
+    # Health Checks
+    healthCheckPath: /health
+    healthCheckTimeout: 30
+    autoDeploy: true
+
+    # Environment Variables
+    envVars:
+      # Node Environment
+      - key: NODE_ENV
+        value: production
+
+      # Server Configuration
+      - key: PORT
+        value: 10000  # Render's default port
+
+      # CORS Configuration (update with your frontend URL)
+      - key: ALLOWED_ORIGINS
+        value: https://your-frontend.com,http://localhost:3000,http://localhost:3001,http://localhost:5173
+
+    # Environment Variables (sensitive - set in Render dashboard)
+    envVarGroups:
+      - groupName: Supabase Config
+        groupDescription: Supabase database connection settings
+        vars:
+          - key: SUPABASE_URL
+            description: Supabase project URL
+            type: secret
+          - key: SUPABASE_SERVICE_KEY
+            description: Supabase service role key
+            type: secret
+
+# Database Configuration (if using Render's PostgreSQL instead of Supabase)
+# Uncomment and modify if needed
+# databases:
+#   - name: kada-connect-db
+#     plan: free
+#     region: oregon
+#     databaseName: kada_connect
+#     user: kada_user
+
+# Deployment Hooks (optional)
+# Uncomment to add custom deployment scripts
+# deploymentHooks:
+#   preBuild:
+#     - command: "echo Starting build process..."
+#   postBuild:
+#     - command: "echo Build completed successfully!"
+
+# Routing and Domains (optional)
+# Uncomment for custom domains
+# routes:
+#   - type: redirect
+#     source: www.your-domain.com
+#     destination: https://your-domain.com
