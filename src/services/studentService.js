@@ -7,40 +7,40 @@ class StudentService {
         .from('students')
         .select(`
           id,
-          "Full Name",
-          "Status",
-          "University / Institution",
-          "Program / Major",
-          "Preferred Industry",
-          "Tech Stack / Skills",
-          "Short Self-Introduction",
-          "CV Upload",
-          "Profile Photo",
-          "LinkedIn",
-          "Portfolio Link",
-          "Phone / WhatsApp Number",
-          "Timestamp"
+          full_name,
+          status,
+          university_institution,
+          program_major,
+          preferred_industry,
+          tech_stack_skills,
+          self_introduction,
+          cv_upload,
+          profile_photo,
+          linkedin,
+          portfolio_link,
+          phone_number,
+          "timestamp"
         `, { count: 'exact' });
 
       // Apply filters
       if (filters.status) {
-        query = query.ilike('"Status"', `%${filters.status}%`);
+        query = query.ilike('status', `%${filters.status}%`);
       }
 
       if (filters.university) {
-        query = query.ilike('"University / Institution"', `%${filters.university}%`);
+        query = query.ilike('university_institution', `%${filters.university_institution}%`);
       }
 
       if (filters.major) {
-        query = query.ilike('"Program / Major"', `%${filters.major}%`);
+        query = query.ilike('program_major', `%${filters.major}%`);
       }
 
       if (filters.industry) {
-        query = query.ilike('"Preferred Industry"', `%${filters.industry}%`);
+        query = query.ilike('preferred_industry', `%${filters.industry}%`);
       }
 
       if (filters.skills) {
-        query = query.ilike('"Tech Stack / Skills"', `%${filters.skills}%`);
+        query = query.ilike('tech_stack_skills', `%${filters.skills}%`);
       }
 
       // Apply pagination
@@ -50,7 +50,7 @@ class StudentService {
 
       query = query
         .range(offset, offset + limit - 1)
-        .order('"Full Name"');
+        .order('full_name');
 
       const { data, error, count } = await query;
 
@@ -83,19 +83,19 @@ class StudentService {
         .from('students')
         .select(`
           id,
-          "Full Name",
-          "Status",
-          "University / Institution",
-          "Program / Major",
-          "Preferred Industry",
-          "Tech Stack / Skills",
-          "Short Self-Introduction",
-          "CV Upload",
-          "Profile Photo",
-          "LinkedIn",
-          "Portfolio Link",
-          "Phone / WhatsApp Number",
-          "Timestamp"
+          "full_name",
+          status,
+          university_institution,
+          program_major,
+          preferred_industry,
+          tech_stack_skills,
+          self_introduction,
+          cv_upload,
+          profile_photo,
+          linkedin,
+          portfolio_link,
+          phone_number,
+          "timestamp"
         `)
         .eq('id', id)
         .single();
@@ -121,32 +121,32 @@ class StudentService {
         .from('students')
         .select(`
           id,
-          "Full Name",
-          "Status",
-          "University / Institution",
-          "Program / Major",
-          "Preferred Industry",
-          "Tech Stack / Skills",
-          "Short Self-Introduction",
-          "CV Upload",
-          "Profile Photo",
-          "LinkedIn",
-          "Portfolio Link",
-          "Phone / WhatsApp Number"
+          "full_name",
+          status,
+          university_institution,
+          program_major,
+          preferred_industry,
+          tech_stack_skills,
+          self_introduction,
+          cv_upload,
+          profile_photo,
+          linkedin,
+          portfolio_link,
+          phone_number
         `)
-        .or(`"Full Name".ilike.%${searchTerm}%,"Short Self-Introduction".ilike.%${searchTerm}%,"Tech Stack / Skills".ilike.%${searchTerm}%,"University / Institution".ilike.%${searchTerm}%,"Program / Major".ilike.%${searchTerm}%,"Preferred Industry".ilike.%${searchTerm}%`);
+        .or(`"full_name".ilike.%${searchTerm}%,self_introduction.ilike.%${searchTerm}%,tech_stack_skills.ilike.%${searchTerm}%,university_institution.ilike.%${searchTerm}%,program_major.ilike.%${searchTerm}%,preferred_industry.ilike.%${searchTerm}%`);
 
       // Apply additional filters
       if (filters.status) {
-        query = query.ilike('"Status"', `%${filters.status}%`);
+        query = query.ilike('status', `%${filters.status}%`);
       }
 
       if (filters.university) {
-        query = query.ilike('"University / Institution"', `%${filters.university}%`);
+        query = query.ilike('university_institution', `%${filters.university}%`);
       }
 
       if (filters.major) {
-        query = query.ilike('"Program / Major"', `%${filters.major}%`);
+        query = query.ilike('program_major', `%${filters.major}%`);
       }
 
       if (filters.industry) {
@@ -154,11 +154,11 @@ class StudentService {
       }
 
       if (filters.skills) {
-        query = query.ilike('"Tech Stack / Skills"', `%${filters.skills}%`);
+        query = query.ilike('tech_stack_skills', `%${filters.skills}%`);
       }
 
       const { data, error } = await query
-        .order('"Full Name"')
+        .order('full_name')
         .limit(50); // Limit search results
 
       if (error) {
@@ -179,17 +179,17 @@ class StudentService {
         .from('students')
         .select(`
           id,
-          "Full Name",
-          "Status",
-          "University / Institution",
-          "Program / Major",
-          "Preferred Industry",
-          "Tech Stack / Skills",
-          "Profile Photo",
-          "LinkedIn"
+          "full_name",
+          status,
+          university_institution,
+          program_major,
+          preferred_industry,
+          tech_stack_skills,
+          profile_photo,
+          linkedin
         `)
-        .ilike('"Status"', status)
-        .order('"Full Name"');
+        .ilike('status', status)
+        .order('full_name');
 
       if (error) {
         console.error('[ERROR] Failed to fetch students by status:', error.message);
@@ -207,8 +207,8 @@ class StudentService {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('"University / Institution"')
-        .not('"University / Institution"', 'is', null);
+        .select('university_institution')
+        .not('university_institution', 'is', null);
 
       if (error) {
         console.error('[ERROR] Failed to fetch universities:', error.message);
@@ -216,7 +216,7 @@ class StudentService {
       }
 
       // Get unique universities and sort them
-      const universities = [...new Set(data.map(item => item['University / Institution']))]
+      const universities = [...new Set(data.map(item => item['university_institution']))]
         .filter(Boolean)
         .sort();
 
@@ -231,8 +231,8 @@ class StudentService {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('"Program / Major"')
-        .not('"Program / Major"', 'is', null);
+        .select('program_major')
+        .not('program_major', 'is', null);
 
       if (error) {
         console.error('[ERROR] Failed to fetch majors:', error.message);
@@ -240,7 +240,7 @@ class StudentService {
       }
 
       // Get unique majors and sort them
-      const majors = [...new Set(data.map(item => item['Program / Major']))]
+      const majors = [...new Set(data.map(item => item['program_major']))]
         .filter(Boolean)
         .sort();
 
@@ -255,8 +255,8 @@ class StudentService {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('"Preferred Industry"')
-        .not('"Preferred Industry"', 'is', null);
+        .select('preferred_industry')
+        .not('preferred_industry', 'is', null);
 
       if (error) {
         console.error('[ERROR] Failed to fetch industries:', error.message);
@@ -264,7 +264,7 @@ class StudentService {
       }
 
       // Get unique industries and sort them
-      const industries = [...new Set(data.map(item => item['Preferred Industry']))]
+      const industries = [...new Set(data.map(item => item['preferred_industry']))]
         .filter(Boolean)
         .sort();
 
@@ -279,8 +279,8 @@ class StudentService {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('"Tech Stack / Skills"')
-        .not('"Tech Stack / Skills"', 'is', null);
+        .select('tech_stack_skills')
+        .not('tech_stack_skills', 'is', null);
 
       if (error) {
         console.error('[ERROR] Failed to fetch skills:', error.message);
@@ -289,7 +289,7 @@ class StudentService {
 
       // Split skills by common delimiters and get unique values
       const allSkills = data.map(item => {
-        const skills = item['Tech Stack / Skills'] || '';
+        const skills = item['tech_stack_skills'] || '';
         return skills.split(/[,\/\n|]/).map(skill => skill.trim()).filter(Boolean);
       }).flat();
 
@@ -312,7 +312,7 @@ class StudentService {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('Status, "University / Institution", "Program / Major", "Preferred Industry", "Tech Stack / Skills"');
+        .select('status, university_institution, program_major, preferred_industry, tech_stack_skills');
 
       if (error) {
         console.error('[ERROR] Failed to fetch student stats:', error.message);
@@ -324,30 +324,30 @@ class StudentService {
       // Get status distribution
       const statusCounts = {};
       data.forEach(student => {
-        const status = student['Status'] || 'Unknown';
+        const status = student['status'] || 'Unknown';
         statusCounts[status] = (statusCounts[status] || 0) + 1;
       });
 
       // Get unique universities
-      const universities = [...new Set(data.map(student => student['University / Institution']).filter(Boolean))];
+      const universities = [...new Set(data.map(student => student['university_institution']).filter(Boolean))];
 
       // Get unique majors
-      const majors = [...new Set(data.map(student => student['Program / Major']).filter(Boolean))];
+      const majors = [...new Set(data.map(student => student['program_major']).filter(Boolean))];
 
       // Get unique industries
-      const industries = [...new Set(data.map(student => student['Preferred Industry']).filter(Boolean))];
+      const industries = [...new Set(data.map(student => student['preferred_industry']).filter(Boolean))];
 
       // Get tech skills
       const allSkills = data.map(student => {
-        const skills = student['Tech Stack / Skills'] || '';
+        const skills = student['tech_stack_skills'] || '';
         return skills.split(/[,\/\n|]/).map(skill => skill.trim()).filter(Boolean);
       }).flat();
       const skills = [...new Set(allSkills)];
 
       // Get top universities and majors
-      const topUniversities = this.getTopItems(data.map(student => student['University / Institution']), 5);
-      const topMajors = this.getTopItems(data.map(student => student['Program / Major']), 5);
-      const topIndustries = this.getTopItems(data.map(student => student['Preferred Industry']), 5);
+      const topUniversities = this.getTopItems(data.map(student => student['university_institution']), 5);
+      const topMajors = this.getTopItems(data.map(student => student['program_major']), 5);
+      const topIndustries = this.getTopItems(data.map(student => student['preferred_industry']), 5);
       const topSkills = this.getTopItems(allSkills, 10);
 
       return {
@@ -378,19 +378,19 @@ class StudentService {
         .insert([dbData])
         .select(`
           id,
-          "Full Name",
-          "Status",
-          "University / Institution",
-          "Program / Major",
-          "Preferred Industry",
-          "Tech Stack / Skills",
-          "Short Self-Introduction",
-          "CV Upload",
-          "Profile Photo",
-          "LinkedIn",
-          "Portfolio Link",
-          "Phone / WhatsApp Number",
-          "Timestamp"
+          "full_name",
+          status,
+          university_institution,
+          program_major,
+          preferred_industry,
+          tech_stack_skills,
+          self_introduction,
+          cv_upload,
+          profile_photo,
+          linkedin,
+          portfolio_link,
+          phone_number,
+          "timestamp"
         `)
         .single();
 
@@ -418,19 +418,19 @@ class StudentService {
         .eq('id', id)
         .select(`
           id,
-          "Full Name",
-          "Status",
-          "University / Institution",
-          "Program / Major",
-          "Preferred Industry",
-          "Tech Stack / Skills",
-          "Short Self-Introduction",
-          "CV Upload",
-          "Profile Photo",
-          "LinkedIn",
-          "Portfolio Link",
-          "Phone / WhatsApp Number",
-          "Timestamp"
+          "full_name",
+          status,
+          university_institution,
+          program_major,
+          preferred_industry,
+          tech_stack_skills,
+          self_introduction,
+          cv_upload,
+          profile_photo,
+          linkedin,
+          portfolio_link,
+          phone_number,
+          "timestamp"
         `)
         .single();
 
@@ -466,19 +466,19 @@ class StudentService {
         .eq('id', id)
         .select(`
           id,
-          "Full Name",
-          "Status",
-          "University / Institution",
-          "Program / Major",
-          "Preferred Industry",
-          "Tech Stack / Skills",
-          "Short Self-Introduction",
-          "CV Upload",
-          "Profile Photo",
-          "LinkedIn",
-          "Portfolio Link",
-          "Phone / WhatsApp Number",
-          "Timestamp"
+          "full_name",
+          status,
+          university_institution,
+          program_major,
+          preferred_industry,
+          tech_stack_skills,
+          self_introduction,
+          cv_upload,
+          profile_photo,
+          linkedin,
+          portfolio_link,
+          phone_number,
+          "timestamp"
         `)
         .single();
 
@@ -504,7 +504,7 @@ class StudentService {
         .from('students')
         .delete()
         .eq('id', id)
-        .select('id, "Full Name"')
+        .select('id, "full_name"')
         .single();
 
       if (error) {
@@ -518,7 +518,7 @@ class StudentService {
       console.log('[SUCCESS] Student deleted successfully with ID:', data.id);
       return {
         id: data.id,
-        fullName: data['Full Name'],
+        fullName: data['full_name'],
         message: 'Student deleted successfully'
       };
     } catch (error) {
@@ -529,18 +529,18 @@ class StudentService {
 
   transformStudentDataForDB(studentData) {
     return {
-      'Full Name': studentData.fullName,
-      'Status': studentData.status,
-      'University / Institution': studentData.university,
-      'Program / Major': studentData.major,
-      'Preferred Industry': studentData.preferredIndustry,
-      'Tech Stack / Skills': studentData.techStack,
-      'Short Self-Introduction': studentData.selfIntroduction,
-      'CV Upload': studentData.cvUpload || null,
-      'Profile Photo': studentData.profilePhoto || null,
-      'LinkedIn': studentData.linkedIn || null,
-      'Portfolio Link': studentData.portfolioLink || null,
-      'Phone / WhatsApp Number': studentData.phoneNumber ? parseInt(studentData.phoneNumber) : null
+      'full_name': studentData.fullName,
+      'status': studentData.status,
+      'university_institution': studentData.university,
+      'program_major': studentData.major,
+      'preferred_industry': studentData.preferredIndustry,
+      'tech_stack_skills': studentData.techStack,
+      'self_introduction': studentData.selfIntroduction,
+      'cv_upload': studentData.cvUpload || null,
+      'profile_photo': studentData.profilePhoto || null,
+      'linkedin': studentData.linkedin || null,
+      'portfolio_link': studentData.portfolioLink || null,
+      'phone_number': studentData.phoneNumber ? parseInt(studentData.phoneNumber) : null
     };
   }
 
@@ -549,40 +549,40 @@ class StudentService {
 
     // Only include fields that are explicitly provided (not undefined)
     if (patchData.fullName !== undefined) {
-      dbData['Full Name'] = patchData.fullName;
+      dbData['full_name'] = patchData.fullName;
     }
     if (patchData.status !== undefined) {
-      dbData['Status'] = patchData.status;
+      dbData['status'] = patchData.status;
     }
     if (patchData.university !== undefined) {
-      dbData['University / Institution'] = patchData.university;
+      dbData['university_institution'] = patchData.university;
     }
     if (patchData.major !== undefined) {
-      dbData['Program / Major'] = patchData.major;
+      dbData['program_major'] = patchData.major;
     }
     if (patchData.preferredIndustry !== undefined) {
-      dbData['Preferred Industry'] = patchData.preferredIndustry;
+      dbData['preferred_industry'] = patchData.preferredIndustry;
     }
     if (patchData.techStack !== undefined) {
-      dbData['Tech Stack / Skills'] = patchData.techStack;
+      dbData['tech_stack_skills'] = patchData.techStack;
     }
     if (patchData.selfIntroduction !== undefined) {
-      dbData['Short Self-Introduction'] = patchData.selfIntroduction;
+      dbData['self_introduction'] = patchData.selfIntroduction;
     }
     if (patchData.cvUpload !== undefined) {
-      dbData['CV Upload'] = patchData.cvUpload || null;
+      dbData['cv_upload'] = patchData.cvUpload || null;
     }
     if (patchData.profilePhoto !== undefined) {
-      dbData['Profile Photo'] = patchData.profilePhoto || null;
+      dbData['profile_photo'] = patchData.profilePhoto || null;
     }
-    if (patchData.linkedIn !== undefined) {
-      dbData['LinkedIn'] = patchData.linkedIn || null;
+    if (patchData.linkedin !== undefined) {
+      dbData['linkedin'] = patchData.linkedin || null;
     }
     if (patchData.portfolioLink !== undefined) {
-      dbData['Portfolio Link'] = patchData.portfolioLink || null;
+      dbData['portfolio_link'] = patchData.portfolioLink || null;
     }
     if (patchData.phoneNumber !== undefined) {
-      dbData['Phone / WhatsApp Number'] = patchData.phoneNumber ? parseInt(patchData.phoneNumber) : null;
+      dbData['phone_number'] = patchData.phoneNumber ? parseInt(patchData.phoneNumber) : null;
     }
 
     return dbData;
@@ -591,19 +591,19 @@ class StudentService {
   transformStudentData(student) {
     return {
       id: student.id,
-      fullName: student['Full Name'],
-      status: student['Status'],
-      university: student['University / Institution'],
-      major: student['Program / Major'],
-      preferredIndustry: student['Preferred Industry'],
-      techStack: student['Tech Stack / Skills'],
-      selfIntroduction: student['Short Self-Introduction'],
-      cvUpload: student['CV Upload'],
-      profilePhoto: student['Profile Photo'],
-      linkedIn: student['LinkedIn'],
-      portfolioLink: student['Portfolio Link'],
-      phone: student['Phone / WhatsApp Number'],
-      timestamp: student['Timestamp']
+      fullName: student['full_name'],
+      status: student['status'],
+      university: student['university_institution'],
+      major: student['program_major'],
+      preferredIndustry: student['preferred_industry'],
+      techStack: student['tech_stack_skills'],
+      selfIntroduction: student['self_introduction'],
+      cvUpload: student['cv_upload'],
+      profilePhoto: student['profile_photo'],
+      linkedin: student['linkedin'],
+      portfolioLink: student['portfolio_link'],
+      phone: student['phone_number'],
+      timestamp: student['timestamp']
     };
   }
 
