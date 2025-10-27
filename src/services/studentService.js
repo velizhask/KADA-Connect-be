@@ -117,11 +117,19 @@ class StudentService {
 
   async searchStudents(searchTerm, filters = {}) {
     try {
+      // Parse multiple search terms
+      const searchTerms = searchTerm.split(/\s+/).filter(term => term.length > 0);
+
+      if (searchTerms.length === 0) {
+        console.log(`[DEBUG] No valid search terms found, returning empty array`);
+        return [];
+      }
+
       let query = supabase
         .from('students')
         .select(`
           id,
-          "full_name",
+          full_name,
           status,
           university_institution,
           program_major,
@@ -133,8 +141,20 @@ class StudentService {
           linkedin,
           portfolio_link,
           phone_number
-        `)
-        .or(`"full_name".ilike.%${searchTerm}%,self_introduction.ilike.%${searchTerm}%,tech_stack_skills.ilike.%${searchTerm}%,university_institution.ilike.%${searchTerm}%,program_major.ilike.%${searchTerm}%,preferred_industry.ilike.%${searchTerm}%`);
+        `);
+
+      // Build dynamic OR conditions for multiple search terms
+      if (searchTerms.length === 1) {
+        // Single term search (using unquoted field names like working company service)
+        const singleTermQuery = `full_name.ilike.%${searchTerms[0]}%,self_introduction.ilike.%${searchTerms[0]}%,tech_stack_skills.ilike.%${searchTerms[0]}%,university_institution.ilike.%${searchTerms[0]}%,program_major.ilike.%${searchTerms[0]}%,preferred_industry.ilike.%${searchTerms[0]}%`;
+          query = query.or(singleTermQuery);
+      } else {
+        // Multiple terms search - each term must match at least one field (Supabase handles parentheses automatically)
+        const orConditions = searchTerms.map(term =>
+          `full_name.ilike.%${term}%,self_introduction.ilike.%${term}%,tech_stack_skills.ilike.%${term}%,university_institution.ilike.%${term}%,program_major.ilike.%${term}%,preferred_industry.ilike.%${term}%`
+        );
+        query = query.or(orConditions.join(','));
+      }
 
       // Apply additional filters
       if (filters.status) {
@@ -150,7 +170,7 @@ class StudentService {
       }
 
       if (filters.industry) {
-        query = query.ilike('"Preferred Industry"', `%${filters.industry}%`);
+        query = query.ilike('preferred_industry', `%${filters.industry}%`);
       }
 
       if (filters.skills) {
@@ -161,12 +181,15 @@ class StudentService {
         .order('full_name')
         .limit(50); // Limit search results
 
+      
       if (error) {
         console.error('[ERROR] Failed to search students:', error.message);
+        console.error('[ERROR] Query details:', { searchTerm, searchTerms, filters });
         throw new Error('Failed to search students');
       }
 
-      return data.map(student => this.transformStudentData(student));
+      const results = data.map(student => this.transformStudentData(student));
+      return results;
     } catch (error) {
       console.error('[ERROR] StudentService.searchStudents:', error.message);
       throw error;
@@ -564,7 +587,8 @@ class StudentService {
       dbData['preferred_industry'] = patchData.preferredIndustry;
     }
     if (patchData.techStack !== undefined) {
-      dbData['tech_stack_skills'] = patchData.techStack;
+      // Ensure tech stack is always a string to avoid JSON conflicts
+      dbData['tech_stack_skills'] = patchData.techStack ? String(patchData.techStack) : null;
     }
     if (patchData.selfIntroduction !== undefined) {
       dbData['self_introduction'] = patchData.selfIntroduction;
