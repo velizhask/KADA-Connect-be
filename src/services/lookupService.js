@@ -78,9 +78,13 @@ class LookupService {
         this.extractUniqueValues('companies', 'tech_roles_interest'),
         this.extractTechSkills(),
         this.extractUniqueValues('students', 'status'),
+        this.getUniversities(),
+        this.getMajors(),
         this.getIndustriesWithCount(),
         this.getTechRolesWithCount(),
-        this.getTechSkillsWithCount()
+        this.getTechSkillsWithCount(),
+        this.getUniversitiesWithCount(),
+        this.getMajorsWithCount()
       ]);
 
       this.cacheWarmed = true;
@@ -161,19 +165,19 @@ class LookupService {
       // Optimized single-pass processing with early filtering
       const uniqueValues = new Set();
 
-      // Special handling for comma-separated tech roles (more efficient)
-      if (column === 'tech_roles_interest') {
+      // Special handling for comma-separated values (more efficient)
+      if (column === 'tech_roles_interest' || column === 'industry_sector') {
         for (const row of data) {
           const value = row[column];
           if (value && typeof value === 'string') {
             const normalizedValue = this.normalizeText(value);
             if (normalizedValue.length > 0) {
-              // Split by comma and process each role in single pass
-              const roles = normalizedValue.split(',');
-              for (const role of roles) {
-                const normalizedRole = this.normalizeText(role);
-                if (normalizedRole.length > 0) {
-                  uniqueValues.add(normalizedRole);
+              // Split by comma and process each value in single pass
+              const values = normalizedValue.split(',');
+              for (const val of values) {
+                const normalizedVal = this.normalizeText(val);
+                if (normalizedVal.length > 0) {
+                  uniqueValues.add(normalizedVal);
                 }
               }
             }
@@ -286,9 +290,19 @@ class LookupService {
       const industryCounts = {};
 
       for (const row of data) {
-        const industry = this.normalizeText(row['industry_sector']);
-        if (industry) {
-          industryCounts[industry] = (industryCounts[industry] || 0) + 1;
+        const industryValue = row['industry_sector'];
+        if (industryValue && typeof industryValue === 'string') {
+          const normalizedValue = this.normalizeText(industryValue);
+          if (normalizedValue.length > 0) {
+            // Split by comma and process each industry
+            const industries = normalizedValue.split(',');
+            for (const industry of industries) {
+              const normalizedIndustry = this.normalizeText(industry);
+              if (normalizedIndustry.length > 0) {
+                industryCounts[normalizedIndustry] = (industryCounts[normalizedIndustry] || 0) + 1;
+              }
+            }
+          }
         }
       }
 
@@ -525,17 +539,25 @@ class LookupService {
         techRoles,
         techSkills,
         studentStatuses,
+        universities,
+        majors,
         popularIndustries,
         popularTechRoles,
-        popularTechSkills
+        popularTechSkills,
+        popularUniversities,
+        popularMajors
       ] = await Promise.all([
         this.extractUniqueValues('companies', 'industry_sector'),
         this.extractUniqueValues('companies', 'tech_roles_interest'),
         this.extractTechSkills(),
         this.extractUniqueValues('students', 'status'),
+        this.getUniversities(),
+        this.getMajors(),
         this.getIndustriesWithCount(),
         this.getTechRolesWithCount(),
-        this.getTechSkillsWithCount()
+        this.getTechSkillsWithCount(),
+        this.getUniversitiesWithCount(),
+        this.getMajorsWithCount()
       ]);
 
       const result = {
@@ -543,10 +565,14 @@ class LookupService {
         techRoles,
         techSkills,
         studentStatuses,
+        universities,
+        majors,
         popular: {
           industries: popularIndustries.slice(0, 10),
           techRoles: popularTechRoles.slice(0, 10),
-          techSkills: popularTechSkills.slice(0, 20)
+          techSkills: popularTechSkills.slice(0, 20),
+          universities: popularUniversities.slice(0, 10),
+          majors: popularMajors.slice(0, 10)
         },
         generatedAt: new Date().toISOString(),
         cacheStatus: {
@@ -561,6 +587,126 @@ class LookupService {
       return result;
     } catch (error) {
       console.error(`[ERROR] getAllLookupData: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get universities
+   */
+  async getUniversities() {
+    return this.extractUniqueValues('students', 'university_institution');
+  }
+
+  /**
+   * Get majors
+   */
+  async getMajors() {
+    return this.extractUniqueValues('students', 'program_major');
+  }
+
+  /**
+   * Get universities with count
+   */
+  async getUniversitiesWithCount() {
+    const cacheKey = 'students_universities_with_count';
+
+    // Check cache first
+    const cached = this.getCachedData(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('university_institution')
+        .not('university_institution', 'is', null)
+        .not('university_institution', 'eq', '');
+
+      if (error) {
+        throw new Error(`Failed to get universities with count: ${error.message}`);
+      }
+
+      // Optimized counting with single-pass processing
+      const universityCounts = {};
+
+      for (const row of data) {
+        const university = this.normalizeText(row['university_institution']);
+        if (university) {
+          universityCounts[university] = (universityCounts[university] || 0) + 1;
+        }
+      }
+
+      // Convert to array and sort by count (descending) with tie-breaker
+      const result = Object.entries(universityCounts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => {
+          if (b.count !== a.count) {
+            return b.count - a.count; // Primary sort by count descending
+          }
+          return a.name.localeCompare(b.name); // Secondary sort alphabetically
+        });
+
+      // Cache the result
+      this.setCachedData(cacheKey, result);
+
+      return result;
+    } catch (error) {
+      console.error(`[ERROR] getUniversitiesWithCount: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get majors with count
+   */
+  async getMajorsWithCount() {
+    const cacheKey = 'students_majors_with_count';
+
+    // Check cache first
+    const cached = this.getCachedData(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('program_major')
+        .not('program_major', 'is', null)
+        .not('program_major', 'eq', '');
+
+      if (error) {
+        throw new Error(`Failed to get majors with count: ${error.message}`);
+      }
+
+      // Optimized counting with single-pass processing
+      const majorCounts = {};
+
+      for (const row of data) {
+        const major = this.normalizeText(row['program_major']);
+        if (major) {
+          majorCounts[major] = (majorCounts[major] || 0) + 1;
+        }
+      }
+
+      // Convert to array and sort by count (descending) with tie-breaker
+      const result = Object.entries(majorCounts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => {
+          if (b.count !== a.count) {
+            return b.count - a.count; // Primary sort by count descending
+          }
+          return a.name.localeCompare(b.name); // Secondary sort alphabetically
+        });
+
+      // Cache the result
+      this.setCachedData(cacheKey, result);
+
+      return result;
+    } catch (error) {
+      console.error(`[ERROR] getMajorsWithCount: ${error.message}`);
       throw error;
     }
   }

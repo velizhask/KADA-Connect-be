@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "4e0b1244-56a9-4dd4-a903-fab165693dc9",
 		"name": "KADA-Connect-be - Complete API Test Suite",
-		"description": "Comprehensive API test suite for KADA Connect Backend covering all 41 endpoints with authentication, validation, and error handling tests.",
+		"description": "Comprehensive API test suite for KADA Connect Backend covering all 49 endpoints with authentication, validation, and error handling tests.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
 		"_exporter_id": "34071377"
 	},
@@ -1539,6 +1539,94 @@
 					"response": []
 				},
 				{
+					"name": "Get All Universities",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Universities response is an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Universities are unique strings\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        const uniqueUniversities = [...new Set(jsonData)];",
+									"        pm.expect(uniqueUniversities.length).to.equal(jsonData.data.length);",
+									"        jsonData.data.forEach(university => {",
+									"            pm.expect(university).to.be.a('string');",
+									"            pm.expect(university).to.not.be.empty;",
+									"        });",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Response time is acceptable\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(1500);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{baseUrl}}/api/universities",
+						"description": "Get all unique universities from both students and lookup data"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Majors",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Majors response is an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Majors are unique strings\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        const uniqueMajors = [...new Set(jsonData)];",
+									"        pm.expect(uniqueMajors.length).to.equal(jsonData.data.length);",
+									"        jsonData.data.forEach(major => {",
+									"            pm.expect(major).to.be.a('string');",
+									"            pm.expect(major).to.not.be.empty;",
+									"        });",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Response time is acceptable\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(1500);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{baseUrl}}/api/majors",
+						"description": "Get all unique majors from both students and lookup data"
+					},
+					"response": []
+				},
+				{
 					"name": "Search Industries",
 					"event": [
 						{
@@ -1642,6 +1730,138 @@
 							]
 						},
 						"description": "Search tech roles with query parameter"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Universities",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Search results contain query term\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const searchTerm = pm.request.url.query.get('q');",
+									"    if (jsonData.data.length > 0) {",
+									"        const found = jsonData.data.some(university => {",
+									"            return university.toLowerCase().includes(searchTerm.toLowerCase());",
+									"        });",
+									"        pm.expect(found).to.be.true;",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Search results are an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Search results are valid strings\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        jsonData.data.forEach(university => {",
+									"            pm.expect(university).to.be.a('string');",
+									"            pm.expect(university).to.not.be.empty;",
+									"        });",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/universities?q=university",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"universities"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "university",
+									"description": "Search query for universities"
+								}
+							]
+						},
+						"description": "Search universities with query parameter and fuzzy matching"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Majors",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Search results contain query term\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const searchTerm = pm.request.url.query.get('q');",
+									"    if (jsonData.data.length > 0) {",
+									"        const found = jsonData.data.some(major => {",
+									"            return major.toLowerCase().includes(searchTerm.toLowerCase());",
+									"        });",
+									"        pm.expect(found).to.be.true;",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Search results are an array\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Search results are valid strings\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        jsonData.data.forEach(major => {",
+									"            pm.expect(major).to.be.a('string');",
+									"            pm.expect(major).to.not.be.empty;",
+									"        });",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/majors?q=computer",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"majors"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "computer",
+									"description": "Search query for majors"
+								}
+							]
+						},
+						"description": "Search majors with query parameter and fuzzy matching"
 					},
 					"response": []
 				},
@@ -1959,6 +2179,140 @@
 							]
 						},
 						"description": "Get most popular tech skills by count"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Popular Universities",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Popular universities are sorted by count\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 1) {",
+									"        for (let i = 0; i < jsonData.data.length - 1; i++) {",
+									"            pm.expect(jsonData[i].count).to.be.at.least(jsonData[i + 1].count);",
+									"        }",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Each item has university and count\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        jsonData.data.forEach(item => {",
+									"            pm.expect(item).to.have.property('university');",
+									"            pm.expect(item).to.have.property('count');",
+									"            pm.expect(item.count).to.be.a('number');",
+									"            pm.expect(item.university).to.be.a('string');",
+									"        });",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Limit parameter is respected\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const limit = parseInt(pm.request.url.query.get('limit'));",
+									"    pm.expect(jsonData.data.length).to.be.at.most(limit);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/popular/universities?limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"popular",
+								"universities"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of results to return"
+								}
+							]
+						},
+						"description": "Get most popular universities by student count"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Popular Majors",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Popular majors are sorted by count\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 1) {",
+									"        for (let i = 0; i < jsonData.data.length - 1; i++) {",
+									"            pm.expect(jsonData[i].count).to.be.at.least(jsonData[i + 1].count);",
+									"        }",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Each item has major and count\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data.length > 0) {",
+									"        jsonData.data.forEach(item => {",
+									"            pm.expect(item).to.have.property('major');",
+									"            pm.expect(item).to.have.property('count');",
+									"            pm.expect(item.count).to.be.a('number');",
+									"            pm.expect(item.major).to.be.a('string');",
+									"        });",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Limit parameter is respected\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    const limit = parseInt(pm.request.url.query.get('limit'));",
+									"    pm.expect(jsonData.data.length).to.be.at.most(limit);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/popular/majors?limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"popular",
+								"majors"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of results to return"
+								}
+							]
+						},
+						"description": "Get most popular majors by student count"
 					},
 					"response": []
 				},

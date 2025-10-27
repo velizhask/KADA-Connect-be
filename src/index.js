@@ -67,6 +67,8 @@ app.get('/api', (req, res) => {
       companies: '/api/companies',
       students: '/api/students',
       industries: '/api/industries',
+      universities: '/api/universities',
+      majors: '/api/majors',
       techRoles: '/api/tech-roles',
       docs: '/api/docs'
     }
@@ -104,6 +106,7 @@ app.get('/api/docs', (req, res) => {
         'POST /students/validate-photo': 'Validate student photo upload'
       },
       lookup: {
+        'GET /lookup/all': 'Get all lookup data',
         'GET /industries': 'Get industries list',
         'GET /tech-roles': 'Get tech roles list',
         'GET /tech-role-categories': 'Get tech role categories',
@@ -111,8 +114,13 @@ app.get('/api/docs', (req, res) => {
         'GET /search/industries': 'Search industries',
         'GET /search/tech-roles': 'Search tech roles',
         'GET /suggestions/tech-skills': 'Get tech skill suggestions',
+        'GET /universities': 'Returns array of unique universities',
+        'GET /search/universities?q=query': 'Search universities with fuzzy matching',
+        'GET /popular/universities': 'Universities sorted by student count',
+        'GET /majors:': 'Returns array of unique academic majors',
+        'GET /search/majors?q=query': 'Search majors with fuzzy matching',
+        'GET /popular/majors': 'Majors sorted by student count',
         'POST /validate/tech-skills': 'Validate tech skills array',
-        'GET /lookup/all': 'Get all lookup data',
         'GET /popular/industries': 'Get popular industries',
         'GET /popular/tech-roles': 'Get popular tech roles',
         'GET /popular/tech-skills': 'Get popular tech skills',
