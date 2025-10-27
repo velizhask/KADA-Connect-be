@@ -101,6 +101,13 @@ class CompanyService {
 
   async searchCompanies(searchTerm, filters = {}) {
     try {
+      // Parse multiple search terms
+      const searchTerms = searchTerm.split(/\s+/).filter(term => term.length > 0);
+
+      if (searchTerms.length === 0) {
+        return [];
+      }
+
       let query = supabase
         .from('companies')
         .select(`
@@ -112,8 +119,19 @@ class CompanyService {
           company_logo,
           tech_roles_interest,
           preferred_skillsets
-        `)
-        .or(`company_name.ilike.%${searchTerm}%,company_summary_description.ilike.%${searchTerm}%,industry_sector.ilike.%${searchTerm}%,tech_roles_interest.ilike.%${searchTerm}%`);
+        `);
+
+      // Build dynamic OR conditions for multiple search terms
+      if (searchTerms.length === 1) {
+        // Single term search (original behavior)
+        query = query.or(`company_name.ilike.%${searchTerms[0]}%,company_summary_description.ilike.%${searchTerms[0]}%,industry_sector.ilike.%${searchTerms[0]}%,tech_roles_interest.ilike.%${searchTerms[0]}%`);
+      } else {
+        // Multiple terms search - each term must match at least one field
+        const orConditions = searchTerms.map(term =>
+          `(company_name.ilike.%${term}%,company_summary_description.ilike.%${term}%,industry_sector.ilike.%${term}%,tech_roles_interest.ilike.%${term}%)`
+        );
+        query = query.or(orConditions.join(','));
+      }
 
       // Apply additional filters
       if (filters.industry) {
@@ -133,7 +151,9 @@ class CompanyService {
         throw new Error('Failed to search companies');
       }
 
-      return data.map(company => this.transformCompanyData(company));
+      const results = data.map(company => this.transformCompanyData(company));
+      console.log(`[DEBUG] Search for "${searchTerm}" returned ${results.length} results`);
+      return results;
     } catch (error) {
       console.error('[ERROR] CompanyService.searchCompanies:', error.message);
       throw error;
@@ -267,6 +287,9 @@ class CompanyService {
       // Transform camelCase input to snake_case for database
       const dbData = this.transformCompanyDataForDB(updateData);
 
+      // Debug: Log the data being sent to Supabase
+      console.log('[DEBUG] updateCompany data:', { id, dbData });
+
       const { data, error } = await supabase
         .from('companies')
         .update(dbData)
@@ -292,6 +315,7 @@ class CompanyService {
           return null; // Company not found
         }
         console.error('[ERROR] Failed to update company:', error.message);
+        console.error('[ERROR] Full error details:', error);
         throw new Error(`Failed to update company: ${error.message}`);
       }
 
@@ -308,11 +332,23 @@ class CompanyService {
       // Transform camelCase input to snake_case for database (partial update)
       const dbData = this.transformCompanyDataForDBPartial(patchData);
 
+      // Debug: Log the data being sent to Supabase
+      console.log('[DEBUG] patchCompany input:', { id, patchData });
+      console.log('[DEBUG] transformed dbData:', dbData);
+
       // Ensure we have some data to update
       if (Object.keys(dbData).length === 0) {
         throw new Error('No valid fields provided for partial update');
       }
 
+      // Try alternative approach: use individual field updates to avoid JSON conflicts
+      const updatePromises = [];
+      const keys = Object.keys(dbData);
+
+      console.log('[DEBUG] About to call Supabase update with data:', dbData);
+      console.log('[DEBUG] Keys to update:', keys);
+
+      // Use the standard update method but with explicit type handling
       const { data, error } = await supabase
         .from('companies')
         .update(dbData)
@@ -338,6 +374,8 @@ class CompanyService {
           return null; // Company not found
         }
         console.error('[ERROR] Failed to patch company:', error.message);
+        console.error('[ERROR] Full error details:', error);
+        console.error('[ERROR] Data being sent:', dbData);
         throw new Error(`Failed to patch company: ${error.message}`);
       }
 
@@ -379,8 +417,7 @@ class CompanyService {
   }
 
   transformCompanyDataForDB(companyData) {
-    return {
-      'email_address': companyData.emailAddress,
+    const dbData = {
       'company_name': companyData.companyName,
       'company_summary_description': companyData.companySummary,
       'industry_sector': companyData.industry,
@@ -393,6 +430,13 @@ class CompanyService {
       'contact_phone_number': companyData.contactPhoneNumber || null,
       'contact_info_visible': companyData.visibleContactInfo ? 'Yes' : 'No'
     };
+
+    // Only include email_address if it exists (handle potential missing field)
+    if (companyData.emailAddress !== undefined) {
+      dbData['email_address'] = companyData.emailAddress;
+    }
+
+    return dbData;
   }
 
   transformCompanyDataForDBPartial(patchData) {
@@ -418,10 +462,12 @@ class CompanyService {
       dbData['company_logo'] = patchData.companyLogo || null;
     }
     if (patchData.techRoles !== undefined) {
-      dbData['tech_roles_interest'] = patchData.techRoles || null;
+      // Ensure tech roles is always a string to avoid JSON conflicts
+      dbData['tech_roles_interest'] = patchData.techRoles ? String(patchData.techRoles) : null;
     }
     if (patchData.preferredSkillsets !== undefined) {
-      dbData['preferred_skillsets'] = patchData.preferredSkillsets || null;
+      // Ensure skillsets is always a string to avoid JSON conflicts
+      dbData['preferred_skillsets'] = patchData.preferredSkillsets ? String(patchData.preferredSkillsets) : null;
     }
     if (patchData.contactPersonName !== undefined) {
       dbData['contact_person_name'] = patchData.contactPersonName || null;

@@ -147,11 +147,19 @@ const startServer = async () => {
     }
 
     // Start Express server
-    app.listen(PORT, () => {
-      console.log(`[SUCCESS] KADA Connect Backend running on port ${PORT}`);
-      console.log(`[INFO] Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`[INFO] Health check: http://localhost:${PORT}/health`);
-      console.log(`[INFO] API endpoints: http://localhost:${PORT}/api`);
+    await new Promise((resolve, reject) => {
+      const server = app.listen(PORT, () => {
+        console.log(`[SUCCESS] KADA Connect Backend running on port ${PORT}`);
+        console.log(`[INFO] Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`[INFO] Health check: http://localhost:${PORT}/health`);
+        console.log(`[INFO] API endpoints: http://localhost:${PORT}/api`);
+        resolve();
+      });
+
+      server.on('error', (error) => {
+        console.error('[ERROR] Server failed to start:', error.message);
+        reject(error);
+      });
     });
   } catch (error) {
     console.error('[ERROR] Failed to start server:', error.message);
