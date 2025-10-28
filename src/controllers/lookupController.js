@@ -459,6 +459,144 @@ class LookupController {
       next(error);
     }
   }
+
+  /**
+   * GET /api/universities
+   * Get all unique universities
+   */
+  async getUniversities(req, res, next) {
+    try {
+      const universities = await lookupService.getUniversities();
+
+      res.status(200).json({
+        success: true,
+        message: 'Universities retrieved successfully',
+        data: universities,
+        count: universities.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/majors
+   * Get all unique majors
+   */
+  async getMajors(req, res, next) {
+    try {
+      const majors = await lookupService.getMajors();
+
+      res.status(200).json({
+        success: true,
+        message: 'Majors retrieved successfully',
+        data: majors,
+        count: majors.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/search/universities
+   * Search universities with query parameter
+   */
+  async searchUniversities(req, res, next) {
+    try {
+      const { q: query, limit = 10 } = req.query;
+
+      const universities = await lookupService.getUniversities();
+      const results = lookupService.searchInList(universities, query, parseInt(limit));
+
+      res.status(200).json({
+        success: true,
+        message: 'University search completed successfully',
+        data: results,
+        query,
+        count: results.length,
+        totalAvailable: universities.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/search/majors
+   * Search majors with query parameter
+   */
+  async searchMajors(req, res, next) {
+    try {
+      const { q: query, limit = 10 } = req.query;
+
+      const majors = await lookupService.getMajors();
+      const results = lookupService.searchInList(majors, query, parseInt(limit));
+
+      res.status(200).json({
+        success: true,
+        message: 'Major search completed successfully',
+        data: results,
+        query,
+        count: results.length,
+        totalAvailable: majors.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/popular/universities
+   * Get most popular universities by count
+   */
+  async getPopularUniversities(req, res, next) {
+    try {
+      const { limit = 10 } = req.query;
+
+      const universitiesWithCount = await lookupService.getUniversitiesWithCount();
+      const popularUniversities = universitiesWithCount.slice(0, parseInt(limit));
+
+      res.status(200).json({
+        success: true,
+        message: 'Popular universities retrieved successfully',
+        data: popularUniversities,
+        count: popularUniversities.length,
+        totalAvailable: universitiesWithCount.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/popular/majors
+   * Get most popular majors by count
+   */
+  async getPopularMajors(req, res, next) {
+    try {
+      const { limit = 10 } = req.query;
+
+      const majorsWithCount = await lookupService.getMajorsWithCount();
+      const popularMajors = majorsWithCount.slice(0, parseInt(limit));
+
+      res.status(200).json({
+        success: true,
+        message: 'Popular majors retrieved successfully',
+        data: popularMajors,
+        count: popularMajors.length,
+        totalAvailable: majorsWithCount.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new LookupController();

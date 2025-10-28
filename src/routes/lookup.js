@@ -25,6 +25,18 @@ router.get('/tech-roles', lookupController.getTechRoles);
 router.get('/tech-role-categories', lookupController.getTechRoleCategories);
 
 /**
+ * GET /api/universities
+ * Get all unique universities
+ */
+router.get('/universities', lookupController.getUniversities);
+
+/**
+ * GET /api/majors
+ * Get all unique majors
+ */
+router.get('/majors', lookupController.getMajors);
+
+/**
  * GET /api/tech-roles/category/:category
  * Get tech roles by specific category
  */
@@ -41,6 +53,18 @@ router.get('/search/industries', validateSearchQuery, lookupController.searchInd
  * Search tech roles with query parameter
  */
 router.get('/search/tech-roles', validateSearchQuery, lookupController.searchTechRoles);
+
+/**
+ * GET /api/search/universities
+ * Search universities with query parameter
+ */
+router.get('/search/universities', validateSearchQuery, lookupController.searchUniversities);
+
+/**
+ * GET /api/search/majors
+ * Search majors with query parameter
+ */
+router.get('/search/majors', validateSearchQuery, lookupController.searchMajors);
 
 /**
  * GET /api/suggestions/tech-skills
@@ -77,6 +101,18 @@ router.get('/popular/tech-roles', lookupController.getPopularTechRoles);
  * Get most popular tech skills by count
  */
 router.get('/popular/tech-skills', lookupController.getPopularTechSkills);
+
+/**
+ * GET /api/popular/universities
+ * Get most popular universities by count
+ */
+router.get('/popular/universities', lookupController.getPopularUniversities);
+
+/**
+ * GET /api/popular/majors
+ * Get most popular majors by count
+ */
+router.get('/popular/majors', lookupController.getPopularMajors);
 
 /**
  * POST /api/cache/clear

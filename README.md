@@ -34,6 +34,8 @@ KADA Connect serves as a bridge between trainees and companies, enabling:
 
 ### Lookup API - High-Performance Reference Data
 - Industries: Get comprehensive list of industries
+- Universities: Get comprehensive list of universities
+- Majors: Get comprehensive list of academic majors
 - Tech Roles: Browse technology roles and categories
 - Suggestions: Smart tech skill suggestions
 - Popular Data: Most common industries, roles, and skills
@@ -179,12 +181,16 @@ http://localhost:3001/api
 #### Lookup API
 | Method | Endpoint | Description |
 |--------|-----------|-------------|
-| GET | `/` | Get all lookup data |
+| GET | `/lookup/all` | Get all lookup data |
 | GET | `/industries` | Get all industries |
+| GET | `/universities` | Get all universities |
+| GET | `/majors` | Get all academic majors |
 | GET | `/tech-roles` | Get all tech roles |
 | GET | `/tech-role-categories` | Get tech role categories |
 | GET | `/tech-roles/category/:category` | Get tech roles by category |
 | GET | `/search/industries` | Search industries |
+| GET | `/search/universities` | Search universities |
+| GET | `/search/majors` | Search academic majors |
 | GET | `/search/tech-roles` | Search tech roles |
 | GET | `/suggestions/tech-skills` | Get tech skill suggestions |
 | GET | `/lookup/all` | Get all lookup data |
