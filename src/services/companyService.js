@@ -122,16 +122,16 @@ class CompanyService {
         `);
 
       // Build dynamic OR conditions for multiple search terms
-      if (searchTerms.length === 1) {
-        // Single term search (original behavior)
-        query = query.or(`company_name.ilike.%${searchTerms[0]}%,company_summary_description.ilike.%${searchTerms[0]}%,industry_sector.ilike.%${searchTerms[0]}%,tech_roles_interest.ilike.%${searchTerms[0]}%`);
-      } else {
-        // Multiple terms search - each term must match at least one field
-        const orConditions = searchTerms.map(term =>
-          `(company_name.ilike.%${term}%,company_summary_description.ilike.%${term}%,industry_sector.ilike.%${term}%,tech_roles_interest.ilike.%${term}%)`
-        );
-        query = query.or(orConditions.join(','));
+      const fields = ['company_name', 'company_summary_description', 'industry_sector', 'tech_roles_interest'];
+      const orConditions = [];
+
+      for (const term of searchTerms) {
+        for (const field of fields) {
+          orConditions.push(`${field}.ilike.%${term}%`);
+        }
       }
+
+      query = query.or(orConditions.join(','));
 
       // Apply additional filters
       if (filters.industry) {
@@ -147,8 +147,8 @@ class CompanyService {
         .limit(50); // Limit search results
 
       if (error) {
-        console.error('[ERROR] Failed to search companies:', error.message);
-        throw new Error('Failed to search companies');
+        console.error('[ERROR] Failed to search companies - Supabase error:', error);
+        throw new Error(`Database search failed: ${error.message}`);
       }
 
       const results = data.map(company => this.transformCompanyData(company));
