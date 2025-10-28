@@ -28,7 +28,7 @@ class StudentService {
       }
 
       if (filters.university) {
-        query = query.ilike('university_institution', `%${filters.university_institution}%`);
+        query = query.ilike('university_institution', `%${filters.university}%`);
       }
 
       if (filters.major) {
