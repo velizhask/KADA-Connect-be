@@ -44,6 +44,19 @@ services:
             description: Supabase service role key
             type: secret
 
+      - groupName: Google Drive API Config
+        groupDescription: Google Drive API service account settings
+        vars:
+          - key: GOOGLE_PROJECT_ID
+            description: Google Cloud project ID
+            type: secret
+          - key: GOOGLE_SERVICE_ACCOUNT_EMAIL
+            description: Google service account email
+            type: secret
+          - key: GOOGLE_PRIVATE_KEY
+            description: Google service account private key
+            type: secret
+
 # Database Configuration (if using Render's PostgreSQL instead of Supabase)
 # Uncomment and modify if needed
 # databases:
