@@ -26,11 +26,14 @@
   "description": "KADA Connect Backend API - A Node.js/Express backend connecting KADA trainees with companies",
   "dependencies": {
     "@supabase/supabase-js": "^2.76.1",
+    "axios": "^1.13.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "googleapis": "^144.0.0",
     "helmet": "^8.1.0",
-    "joi": "^18.0.1"
+    "joi": "^18.0.1",
+    "node-cache": "^5.1.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

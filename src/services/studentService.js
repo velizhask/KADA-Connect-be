@@ -1,4 +1,5 @@
 const { supabase } = require('../db');
+const { convertImageUrlsInArray, convertImageUrlsToProxy } = require('../utils/urlHelper');
 
 class StudentService {
   async getAllStudents(filters = {}) {
@@ -62,8 +63,11 @@ class StudentService {
       // Transform data to camelCase for API consistency
       const transformedData = data.map(student => this.transformStudentData(student));
 
+      // Convert image URLs to proxy URLs
+      const dataWithProxyUrls = convertImageUrlsInArray(transformedData, ['profilePhoto']);
+
       return {
-        students: transformedData,
+        students: dataWithProxyUrls,
         pagination: {
           page,
           limit,
@@ -108,7 +112,8 @@ class StudentService {
         throw new Error('Failed to fetch student');
       }
 
-      return this.transformStudentData(data);
+      const transformedData = this.transformStudentData(data);
+      return convertImageUrlsToProxy(transformedData, ['profilePhoto']);
     } catch (error) {
       console.error('[ERROR] StudentService.getStudentById:', error.message);
       throw error;
@@ -219,7 +224,8 @@ class StudentService {
         throw new Error('Failed to fetch students by status');
       }
 
-      return data.map(student => this.transformStudentData(student));
+      const transformedResults = data.map(student => this.transformStudentData(student));
+      return convertImageUrlsInArray(transformedResults, ['profilePhoto']);
     } catch (error) {
       console.error('[ERROR] StudentService.getStudentsByStatus:', error.message);
       throw error;
@@ -423,7 +429,8 @@ class StudentService {
       }
 
       console.log('[SUCCESS] Student created successfully with ID:', data.id);
-      return this.transformStudentData(data);
+      const transformedData = this.transformStudentData(data);
+      return convertImageUrlsToProxy(transformedData, ['profilePhoto']);
     } catch (error) {
       console.error('[ERROR] StudentService.createStudent:', error.message);
       throw error;
@@ -466,7 +473,8 @@ class StudentService {
       }
 
       console.log('[SUCCESS] Student updated successfully with ID:', data.id);
-      return this.transformStudentData(data);
+      const transformedData = this.transformStudentData(data);
+      return convertImageUrlsToProxy(transformedData, ['profilePhoto']);
     } catch (error) {
       console.error('[ERROR] StudentService.updateStudent:', error.message);
       throw error;
@@ -514,7 +522,8 @@ class StudentService {
       }
 
       console.log('[SUCCESS] Student patched successfully with ID:', data.id);
-      return this.transformStudentData(data);
+      const transformedData = this.transformStudentData(data);
+      return convertImageUrlsToProxy(transformedData, ['profilePhoto']);
     } catch (error) {
       console.error('[ERROR] StudentService.patchStudent:', error.message);
       throw error;

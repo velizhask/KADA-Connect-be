@@ -12,8 +12,10 @@ const { testConnection } = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Security middleware
-app.use(helmet());
+// Security middleware with cross-origin resource policy for images
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
 // CORS configuration
 const corsOptions = {
@@ -53,6 +55,7 @@ app.get('/health', (req, res) => {
 const companyRoutes = require('./routes/companies');
 const studentRoutes = require('./routes/students');
 const lookupRoutes = require('./routes/lookup');
+const proxyRoutes = require('./routes/proxy');
 
 // Import middleware
 const { errorHandler, notFoundHandler } = require('./middlewares/error-handler');
@@ -138,6 +141,7 @@ app.get('/api/docs', (req, res) => {
 app.use('/api/companies', companyRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api', lookupRoutes);
+app.use('/api/proxy', proxyRoutes);
 
 // 404 handler
 app.use(notFoundHandler);

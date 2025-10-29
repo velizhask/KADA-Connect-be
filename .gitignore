@@ -35,6 +35,7 @@ CLAUDE.md
 prd.md
 /docs
 /collection/KADA-Connect-Staging-Environment.postman_environment.json
+render.yaml
 
 # Dependency directories
 node_modules/
