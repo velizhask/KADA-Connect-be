@@ -1,5 +1,4 @@
 const { supabase } = require('../db');
-const { convertImageUrlsInArray, convertImageUrlsToProxy } = require('../utils/urlHelper');
 
 class CompanyService {
   async getAllCompanies(filters = {}) {
@@ -49,11 +48,8 @@ class CompanyService {
       // Transform data to camelCase for API consistency
       const transformedData = data.map(company => this.transformCompanyData(company));
 
-      // Convert image URLs to proxy URLs
-      const dataWithProxyUrls = convertImageUrlsInArray(transformedData, ['logo']);
-
       return {
-        companies: dataWithProxyUrls,
+        companies: transformedData,
         pagination: {
           page,
           limit,
@@ -97,7 +93,7 @@ class CompanyService {
       }
 
       const transformedData = this.transformCompanyData(data);
-      return convertImageUrlsToProxy(transformedData, ['logo']);
+      return transformedData;
     } catch (error) {
       console.error('[ERROR] CompanyService.getCompanyById:', error.message);
       throw error;
@@ -157,9 +153,8 @@ class CompanyService {
       }
 
       const transformedResults = data.map(company => this.transformCompanyData(company));
-      const resultsWithProxyUrls = convertImageUrlsInArray(transformedResults, ['logo']);
-      console.log(`[DEBUG] Search for "${searchTerm}" returned ${resultsWithProxyUrls.length} results`);
-      return resultsWithProxyUrls;
+      console.log(`[DEBUG] Search for "${searchTerm}" returned ${transformedResults.length} results`);
+      return transformedResults;
     } catch (error) {
       console.error('[ERROR] CompanyService.searchCompanies:', error.message);
       throw error;
@@ -282,7 +277,7 @@ class CompanyService {
 
       console.log('[SUCCESS] Company created successfully with ID:', data.id);
       const transformedData = this.transformCompanyData(data);
-      return convertImageUrlsToProxy(transformedData, ['logo']);
+      return transformedData;
     } catch (error) {
       console.error('[ERROR] CompanyService.createCompany:', error.message);
       throw error;
@@ -328,7 +323,7 @@ class CompanyService {
 
       console.log('[SUCCESS] Company updated successfully with ID:', data.id);
       const transformedData = this.transformCompanyData(data);
-      return convertImageUrlsToProxy(transformedData, ['logo']);
+      return transformedData;
     } catch (error) {
       console.error('[ERROR] CompanyService.updateCompany:', error.message);
       throw error;
@@ -389,7 +384,7 @@ class CompanyService {
 
       console.log('[SUCCESS] Company patched successfully with ID:', data.id);
       const transformedData = this.transformCompanyData(data);
-      return convertImageUrlsToProxy(transformedData, ['logo']);
+      return transformedData;
     } catch (error) {
       console.error('[ERROR] CompanyService.patchCompany:', error.message);
       throw error;
