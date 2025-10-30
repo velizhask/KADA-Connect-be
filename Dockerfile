@@ -1,5 +1,5 @@
 # KADA Connect Backend - Docker Configuration
-# Optimized for Render deployment (backup option)
+# Optimized for Render deployment
 
 FROM node:18-alpine
 
@@ -23,7 +23,7 @@ COPY . .
 RUN chown -R nodejs:nodejs /app
 USER nodejs
 
-# Expose port (Render will set the PORT env var)
+# Expose port for Render (standard port)
 EXPOSE 10000
 
 # Health check
@@ -31,4 +31,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 10000) + '/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["node", "src/index.js"]
