@@ -9,18 +9,27 @@ const {
   validateSearchQuery,
   sanitizeInput
 } = require('../middlewares/validation');
+const {
+  listCacheHeaders,
+  resourceCacheHeaders,
+  base64CacheHeaders,
+  cacheStatsHeaders
+} = require('../middlewares/cacheHeaders');
 
 // Apply sanitization middleware to all routes
 router.use(sanitizeInput);
 
+// Apply cache statistics headers to all routes
+router.use(cacheStatsHeaders);
+
 // GET /api/students - List all students with filtering and pagination
-router.get('/', validatePagination, studentController.getStudents);
+router.get('/', listCacheHeaders, validatePagination, studentController.getStudents);
 
 // GET /api/students/search - Search students
-router.get('/search', validateSearchQuery, validatePagination, studentController.searchStudents);
+router.get('/search', listCacheHeaders, validateSearchQuery, validatePagination, studentController.searchStudents);
 
 // GET /api/students/status/:status - Get students by status
-router.get('/status/:status', studentController.getStudentsByStatus);
+router.get('/status/:status', listCacheHeaders, studentController.getStudentsByStatus);
 
 // GET /api/students/universities - Get all universities
 router.get('/universities', studentController.getUniversities);
@@ -44,7 +53,7 @@ router.post('/validate-cv', studentController.validateCV);
 router.post('/validate-photo', studentController.validatePhoto);
 
 // GET /api/students/:id - Get student by ID
-router.get('/:id', validateStudentId, studentController.getStudentById);
+router.get('/:id', resourceCacheHeaders, validateStudentId, studentController.getStudentById);
 
 // POST /api/students - Create new student
 router.post('/', validateRequest(studentSchemas.create), studentController.createStudent);
