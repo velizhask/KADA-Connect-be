@@ -1,12 +1,12 @@
 # KADA Connect Backend
 
-A Node.js/Express backend API for the KADA Connect platform - connecting tech talent (students and trainees) with job opportunities in Indonesia.
+A Node.js/Express backend API for the KADA Connect platform - connecting tech talent with job opportunities in Indonesia.
 
 ## Overview
 
 KADA Connect serves as a comprehensive talent-matching platform, enabling:
 - Companies to discover and explore tech talent profiles
-- Students and trainees to find career opportunities
+- Kada trainees and Alumni to find career opportunities
 - Professional networking and hiring connections
 - Industry insights and tech trends analysis
 
@@ -23,7 +23,7 @@ KADA Connect serves as a comprehensive talent-matching platform, enabling:
 - Delete Companies: Remove companies from the platform
 
 ### Students API - Complete CRUD Operations
-- Student Profiles: Browse trainee profiles with comprehensive filtering
+- Student Profiles: Browse students profiles with comprehensive filtering
 - Academic Info: View universities, majors, and educational backgrounds
 - Career Focus: Explore preferred industries and tech stacks
 - Student Analytics: Statistics on skills, universities, and career trends
