@@ -1,8 +1,18 @@
 const { supabase } = require('../db');
+const { base64ResponseCache } = require('./base64ResponseCacheService');
 
 class StudentService {
   async getAllStudents(filters = {}) {
     try {
+      // Check cache first for list responses
+      const cacheKey = 'getAllStudents';
+      const cachedResponse = base64ResponseCache.getAPIResponse(cacheKey, filters);
+
+      if (cachedResponse) {
+        console.log('[CACHE HIT] Returning cached students list');
+        return cachedResponse.data;
+      }
+
       let query = supabase
         .from('students')
         .select(`
@@ -62,7 +72,7 @@ class StudentService {
       // Transform data to camelCase for API consistency
       const transformedData = data.map(student => this.transformStudentData(student));
 
-      return {
+      const response = {
         students: transformedData,
         pagination: {
           page,
@@ -71,6 +81,12 @@ class StudentService {
           totalPages: Math.ceil((count || 0) / limit)
         }
       };
+
+      // Cache the response
+      base64ResponseCache.setAPIResponse(cacheKey, filters, response);
+      console.log('[CACHE MISS] Stored students list in cache');
+
+      return response;
     } catch (error) {
       console.error('[ERROR] StudentService.getAllStudents:', error.message);
       throw error;
@@ -79,6 +95,15 @@ class StudentService {
 
   async getStudentById(id) {
     try {
+      // Check cache first for individual student
+      const cacheKey = 'getStudentById';
+      const cachedResponse = base64ResponseCache.getAPIResponse(cacheKey, { id });
+
+      if (cachedResponse) {
+        console.log('[CACHE HIT] Returning cached student:', id);
+        return cachedResponse.data;
+      }
+
       const { data, error } = await supabase
         .from('students')
         .select(`
@@ -109,6 +134,11 @@ class StudentService {
       }
 
       const transformedData = this.transformStudentData(data);
+
+      // Cache the individual student response
+      base64ResponseCache.setAPIResponse(cacheKey, { id }, transformedData);
+      console.log('[CACHE MISS] Stored student in cache:', id);
+
       return transformedData;
     } catch (error) {
       console.error('[ERROR] StudentService.getStudentById:', error.message);

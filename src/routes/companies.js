@@ -10,15 +10,24 @@ const {
   validateLogoUrl,
   sanitizeInput
 } = require('../middlewares/validation');
+const {
+  listCacheHeaders,
+  resourceCacheHeaders,
+  base64CacheHeaders,
+  cacheStatsHeaders
+} = require('../middlewares/cacheHeaders');
 
 // Apply sanitization middleware to all routes
 router.use(sanitizeInput);
 
+// Apply cache statistics headers to all routes
+router.use(cacheStatsHeaders);
+
 // GET /api/companies - List all companies with filtering and pagination
-router.get('/', validatePagination, companyController.getCompanies);
+router.get('/', listCacheHeaders, validatePagination, companyController.getCompanies);
 
 // GET /api/companies/search - Search companies
-router.get('/search', validateSearchQuery, validatePagination, companyController.searchCompanies);
+router.get('/search', listCacheHeaders, validateSearchQuery, validatePagination, companyController.searchCompanies);
 
 // GET /api/companies/industries - Get all industries
 router.get('/industries', companyController.getIndustries);
@@ -33,7 +42,7 @@ router.get('/stats', companyController.getCompanyStats);
 router.post('/validate-logo', validateLogoUrl, companyController.validateLogo);
 
 // GET /api/companies/:id - Get company by ID
-router.get('/:id', validateCompanyId, companyController.getCompanyById);
+router.get('/:id', resourceCacheHeaders, validateCompanyId, companyController.getCompanyById);
 
 // POST /api/companies - Create new company
 router.post('/', validateRequest(companySchemas.create), companyController.createCompany);

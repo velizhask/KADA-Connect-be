@@ -7,6 +7,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const { testConnection } = require('./db');
 
 const app = express();
@@ -30,6 +31,20 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Compression middleware for optimized responses
+app.use(compression({
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    // Compress all responses, especially useful for base64 data
+    return compression.filter(req, res);
+  },
+  threshold: 1024, // Only compress responses larger than 1KB
+  level: 6, // Compression level (1-9, 6 is default)
+  chunkSize: 16 * 1024 // 16KB chunks
+}));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
