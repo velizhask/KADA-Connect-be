@@ -194,7 +194,7 @@ class StudentService {
       }
 
       const results = data.map(student => this.transformStudentData(student));
-      return results;
+      return convertImageUrlsInArray(results, ['profilePhoto']);
     } catch (error) {
       console.error('[ERROR] StudentService.searchStudents:', error.message);
       throw error;

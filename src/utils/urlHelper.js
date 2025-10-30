@@ -1,7 +1,55 @@
 /**
  * URL Helper Utilities
  * Converts external image URLs to proxy URLs to bypass CORS restrictions
+ * Supports multiple API base URLs for different environments (dev/prod)
  */
+
+/**
+ * Get the appropriate API base URL based on current environment
+ * @param {string} preferredBaseUrl - Preferred base URL (optional)
+ * @returns {string} - Selected API base URL
+ */
+function getApiBaseUrl(preferredBaseUrl = null) {
+  // If a specific base URL is provided, use it
+  if (preferredBaseUrl) {
+    return preferredBaseUrl;
+  }
+
+  // Get all configured API base URLs
+  const apiBaseUrls = process.env.API_BASE_URL?.split(',').map(url => url.trim()) || [];
+
+  if (apiBaseUrls.length === 0) {
+    console.log('[URL Helper] No API_BASE_URL configured, using empty string');
+    return '';
+  }
+
+  // Environment-based selection
+  const nodeEnv = process.env.NODE_ENV?.toLowerCase();
+  const isDevelopment = !nodeEnv || nodeEnv === 'development';
+  const isProduction = nodeEnv === 'production';
+
+  console.log(`[URL Helper] Environment: ${nodeEnv || 'development'}, Available URLs: ${apiBaseUrls.length}`);
+
+  let selectedUrl;
+
+  if (isDevelopment) {
+    // In development, prefer localhost URLs
+    const localhostUrl = apiBaseUrls.find(url => url.includes('localhost') || url.includes('127.0.0.1'));
+    selectedUrl = localhostUrl || apiBaseUrls[0];
+    console.log(`[URL Helper] Development mode - selected: ${selectedUrl}`);
+  } else if (isProduction) {
+    // In production, prefer non-localhost URLs
+    const prodUrl = apiBaseUrls.find(url => !url.includes('localhost') && !url.includes('127.0.0.1'));
+    selectedUrl = prodUrl || apiBaseUrls[apiBaseUrls.length - 1];
+    console.log(`[URL Helper] Production mode - selected: ${selectedUrl}`);
+  } else {
+    // Default to first URL for other environments
+    selectedUrl = apiBaseUrls[0];
+    console.log(`[URL Helper] Default mode - selected: ${selectedUrl}`);
+  }
+
+  return selectedUrl;
+}
 
 /**
  * Convert image URL to proxy URL if needed
@@ -50,8 +98,8 @@ function convertToProxyUrl(imageUrl, baseUrl = null) {
       return imageUrl; // Return original URL if no proxy needed
     }
 
-    // Construct proxy URL
-    const apiBaseUrl = baseUrl || process.env.API_BASE_URL || '';
+    // Construct proxy URL using environment-aware selection
+    const apiBaseUrl = getApiBaseUrl(baseUrl);
     console.log(`[URL Helper] Using API base URL: ${apiBaseUrl}`);
 
     const proxyUrl = `${apiBaseUrl}/api/proxy/image?url=${encodeURIComponent(imageUrl)}`;
@@ -104,6 +152,7 @@ function convertImageUrlsInArray(items, imageFields = ['logo', 'profilePhoto'], 
 }
 
 module.exports = {
+  getApiBaseUrl,
   convertToProxyUrl,
   convertImageUrlsToProxy,
   convertImageUrlsInArray

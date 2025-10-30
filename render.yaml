@@ -28,9 +28,10 @@ services:
       - key: PORT
         value: 10000  # Render's default port
 
-      # CORS Configuration (update with your frontend URL)
+      # CORS Configuration (set in Render dashboard)
       - key: ALLOWED_ORIGINS
-        value: https://your-frontend.com,http://localhost:3000,http://localhost:3001,http://localhost:5173
+        description: CORS allowed origins (comma-separated URLs)
+        type: secret
 
     # Environment Variables (sensitive - set in Render dashboard)
     envVarGroups:
@@ -55,6 +56,13 @@ services:
             type: secret
           - key: GOOGLE_PRIVATE_KEY
             description: Google service account private key
+            type: secret
+
+      - groupName: API Config
+        groupDescription: API endpoints configuration
+        vars:
+          - key: API_BASE_URL
+            description: API base URLs (comma-separated)
             type: secret
 
 # Database Configuration (if using Render's PostgreSQL instead of Supabase)

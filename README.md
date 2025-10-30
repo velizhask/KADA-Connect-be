@@ -1,14 +1,14 @@
 # KADA Connect Backend
 
-A Node.js/Express backend API for the KADA Connect microsite - a platform connecting KADA (Korea-ASEAN Digital Academy) trainees with participating companies for the Industry Visit event.
+A Node.js/Express backend API for the KADA Connect platform - connecting tech talent (students and trainees) with job opportunities in Indonesia.
 
 ## Overview
 
-KADA Connect serves as a bridge between trainees and companies, enabling:
-- Companies to discover and explore trainee profiles
-- Trainees to find and research participating companies
-- Professional networking and hiring opportunities
-- Industry insights and trends
+KADA Connect serves as a comprehensive talent-matching platform, enabling:
+- Companies to discover and explore tech talent profiles
+- Students and trainees to find career opportunities
+- Professional networking and hiring connections
+- Industry insights and tech trends analysis
 
 ## Features
 
@@ -44,13 +44,19 @@ KADA Connect serves as a bridge between trainees and companies, enabling:
 - Cache Warming: Pre-populated cache for optimal response times
 - Search Performance: Optimized fuzzy search with relevance scoring
 
-### Validation & Quality - Implemented
-- Input Validation: Comprehensive Joi-based validation for all operations
-- Email Validation: Proper email format checking
-- URL Validation: Website and profile link validation
-- Data Limits: Enforced length limits for all text fields
-- Business Rules: Status validation and other business constraints
-- Partial Updates: PATCH operations that preserve unchanged data
+### Proxy API - Image Processing Service
+- **Google Drive Integration**: Direct image proxy from Google Drive URLs
+- **Security Controls**: Domain allowlist and rate limiting
+- **Performance**: Multi-layer caching with intelligent invalidation
+- **Validation**: URL format and accessibility checking
+
+### Validation & Quality
+- **Input Validation**: Comprehensive Joi-based validation for all operations
+- **Email Validation**: Proper email format checking
+- **URL Validation**: Website and profile link validation
+- **Data Limits**: Enforced length limits for all text fields
+- **Business Rules**: Status validation and other business constraints
+- **Partial Updates**: PATCH operations that preserve unchanged data
 
 ### Testing & Documentation
 - Comprehensive Test Suite: Complete Postman collection with 41 API endpoints
@@ -75,20 +81,20 @@ KADA Connect serves as a bridge between trainees and companies, enabling:
 - **Development**: Nodemon
 - **Environment**: dotenv
 
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
-- Node.js 16+ installed
-- Supabase account and project set up
-- Environment variables configured
+- **Node.js** 18+ installed
+- **Supabase** account and project set up
+- **npm** (Node Package Manager)
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd kada-connect
+   cd KADA-Connect-be
    ```
 
 2. **Install dependencies**
@@ -98,13 +104,15 @@ KADA Connect serves as a bridge between trainees and companies, enabling:
 
 3. **Set up environment variables**
    ```bash
+   # Copy the example environment file
+   cp .env.example .env
 
    # Edit with your configuration
    nano .env
    ```
 
-4. **Configure database**
-   - Ensure your Supabase tables are created using the provided schema
+4. **Configure environment variables**
+   - Create your Supabase project at https://supabase.com
    - Update `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` in `.env`
 
 ### Environment Variables
@@ -112,28 +120,34 @@ KADA Connect serves as a bridge between trainees and companies, enabling:
 ```bash
 # Database Configuration
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_KEY=your-service-key
+SUPABASE_SERVICE_KEY=your-service-role-key
 
 # Server Configuration
 PORT=3001
 NODE_ENV=development
 
 # CORS Configuration
-ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
+ALLOWED_ORIGINS=http://localhost:3001,https://yourdomain.com
 ```
 
-## Running the Application
+### Running the Application
 
-### Development Mode
+**Development Mode:**
 ```bash
 npm run dev
 ```
 The server will restart automatically on file changes.
 
-### Production Mode
+**Production Mode:**
 ```bash
 npm start
 ```
+
+### Deployment
+
+The application deployed on **Render**:
+
+- **Render**: Use the provided `render.yaml` configuration
 
 ## API Documentation
 
@@ -142,83 +156,24 @@ npm start
 http://localhost:3001/api
 ```
 
-### Main Endpoints
+### Quick API Reference
 
-#### Companies API
-| Method | Endpoint | Description |
-|--------|-----------|-------------|
-| GET | `/companies` | List all companies with filtering |
-| POST | `/companies` | Create new company |
-| GET | `/companies/:id` | Get company by ID |
-| PUT | `/companies/:id` | Update company (full - replaces all fields) |
-| PATCH | `/companies/:id` | Update company (partial - updates only specified fields) |
-| DELETE | `/companies/:id` | Delete company |
-| GET | `/companies/search` | Search companies |
-| GET | `/companies/industries` | Get all industries |
-| GET | `/companies/tech-roles` | Get all tech roles |
-| GET | `/companies/stats` | Get company statistics |
-| POST | `/companies/validate-logo` | Validate logo URLs |
+| API Category | Endpoints | Description |
+|--------------|-----------|-------------|
+| **Companies** | 11 endpoints | Company profiles, search, statistics |
+| **Students** | 15 endpoints | Student profiles, filtering, analytics |
+| **Lookup** | 22 endpoints | Reference data, search, caching |
+| **Proxy** | 4 endpoints | Image proxy service with security |
+| **System** | 3 endpoints | Health checks, API overview |
 
-#### Students API
-| Method | Endpoint | Description |
-|--------|-----------|-------------|
-| GET | `/students` | List all students with filtering |
-| POST | `/students` | Create new student |
-| GET | `/students/:id` | Get student by ID |
-| PUT | `/students/:id` | Update student (full - replaces all fields) |
-| PATCH | `/students/:id` | Update student (partial - updates only specified fields) |
-| DELETE | `/students/:id` | Delete student |
-| GET | `/students/search` | Search students |
-| GET | `/students/status/:status` | Get students by status |
-| GET | `/students/universities` | Get all universities |
-| GET | `/students/majors` | Get all majors |
-| GET | `/students/industries` | Get preferred industries |
-| GET | `/students/skills` | Get tech skills |
-| GET | `/students/stats` | Get student statistics |
-| POST | `/students/validate-cv` | Validate CV URLs |
-| POST | `/students/validate-photo` | Validate photo URLs |
+📖 **For complete API documentation**, see: **[docs/API.md](docs/API.md)**
 
-#### Lookup API
-| Method | Endpoint | Description |
-|--------|-----------|-------------|
-| GET | `/lookup/all` | Get all lookup data |
-| GET | `/industries` | Get all industries |
-| GET | `/universities` | Get all universities |
-| GET | `/majors` | Get all academic majors |
-| GET | `/tech-roles` | Get all tech roles |
-| GET | `/tech-role-categories` | Get tech role categories |
-| GET | `/tech-roles/category/:category` | Get tech roles by category |
-| GET | `/search/industries` | Search industries |
-| GET | `/search/universities` | Search universities |
-| GET | `/search/majors` | Search academic majors |
-| GET | `/search/tech-roles` | Search tech roles |
-| GET | `/suggestions/tech-skills` | Get tech skill suggestions |
-| GET | `/lookup/all` | Get all lookup data |
-| GET | `/popular/industries` | Get popular industries |
-| GET | `/popular/tech-roles` | Get popular tech roles |
-| GET | `/popular/tech-skills` | Get popular tech skills |
-| GET | `/cache/status` | Get cache status |
-| POST | `/cache/clear` | Clear lookup cache (admin) |
-| POST | `/validate/tech-skills` | Validate tech skills array |
-
-#### System
-| Method | Endpoint | Description |
-|--------|-----------|-------------|
-| GET | `/health` | Health check |
-| GET | `/` | API overview |
-
-### Response Format
-
-All API responses follow this format:
-
-```json
-{
-  "success": true|false,
-  "message": "Human-readable message",
-  "data": {}, // Response data or null for errors
-  "pagination": {} // Optional for paginated endpoints
-}
-```
+The detailed API documentation includes:
+- Complete endpoint specifications with request/response examples
+- Authentication requirements and security considerations
+- Input validation rules and error handling
+- Performance optimization details
+- cURL examples for all endpoints
 
 ## Performance Optimizations
 
@@ -240,38 +195,40 @@ All API responses follow this format:
 
 ```
 kada-connect-be/
+├── collection                                # Postman collection
+|   ├── KADA-Connect-be.postman_collection.json
+|   └── KADA-Connect-Env.postman_environment.json
+├── docs/
+│   ├── API.md                                # API Documentation
+│   └── DEPLOYMENT.md                         # Deployment Documentation
 ├── src/
-│   ├── controllers/                                  # API endpoint handlers
+│   ├── controllers/                          # API endpoint handlers
 │   │   ├── companyController.js
 │   │   ├── studentController.js
 │   │   └── lookupController.js
-│   ├── services/                                     # Business logic and data operations
+│   ├── services/                             # Business logic and data operations
 │   │   ├── companyService.js
 │   │   ├── studentService.js
 │   │   └── lookupService.js
-│   ├── routes/                                       # API routing configuration
+│   ├── routes/                               # API routing configuration
 │   │   ├── companies.js
 │   │   ├── students.js
 │   │   └── lookup.js
-│   ├── middlewares/                                  # Validation, error handling, security
+│   ├── middlewares/                          # Validation, error handling, security
 │   │   └── validation.js
-│   ├── validators/                                   # Input validation schemas
+│   ├── validators/                           # Input validation schemas
 │   │   └── schemas.js
-│   ├── db/                                           # Database connection
+│   ├── db/                                   # Database connection
 │   │   └── index.js
-│   └── index.js                                      # Application entry point
-├── collection                                        # Postman collection
-|   ├── KADA-Connect-be.postman_collection.json
-|   └── KADA-Connect-Env.postman_environment.json
-├── .env.example                                      # Environment variables template
-├── .env                                              # Environment variables (git-ignored)
-├── .gitignore                                        # Git ignore file
-├── package.json                                      # Dependencies and scripts
-└── README.md                                          # Project documentation
+│   └── index.js                              # Application entry point
+├── .env.example                              # Environment variables template
+├── .env                                      # Environment variables (git-ignored)
+├── .gitignore                                # Git ignore file
+├── package.json                              # Dependencies and scripts
+└── README.md                                 # Project documentation
 ```
 
 ## Testing
-
 ### Automated Testing (Recommended)
 A comprehensive Postman collection with 41 API endpoints is available:
 - **Complete Test Suite**: All endpoints with validation and error testing
@@ -281,68 +238,6 @@ A comprehensive Postman collection with 41 API endpoints is available:
   - `KADA-Connect-be-Complete.postman_collection.json`
   - `KADA-Connect-Environment.postman_environment.json`
 
-### Manual Testing Examples
-
-```bash
-# Health check
-curl http://localhost:3001/health
-
-# Get all companies
-curl http://localhost:3001/api/companies
-
-# Create new company
-curl -X POST http://localhost:3001/api/companies \
-  -H "Content-Type: application/json" \
-  -d '{"emailAddress":"test@company.com","companyName":"Test Company","companySummary":"Test description","industry":"Technology"}'
-
-# Update company (partial - only updates specified fields)
-curl -X PATCH http://localhost:3001/api/companies/1 \
-  -H "Content-Type: application/json" \
-  -d '{"companyName":"Updated Company"}'
-
-# Delete company
-curl -X DELETE http://localhost:3001/api/companies/1
-
-# Get all students
-curl http://localhost:3001/api/students
-
-# Create new student
-curl -X POST http://localhost:3001/api/students \
-  -H "Content-Type: application/json" \
-  -d '{"fullName":"Test Student","status":"Current Trainee","university":"Test University","major":"Computer Science","preferredIndustry":"Technology","techStack":"JavaScript, Python","selfIntroduction":"Passionate student"}'
-
-# Update student
-curl -X PATCH http://localhost:3001/api/students/1 \
-  -H "Content-Type: application/json" \
-  -d '{"fullName":"Updated Student"}'
-
-# Delete student
-curl -X DELETE http://localhost:3001/api/students/1
-
-# Search companies
-curl "http://localhost:3001/api/companies/search?q=Developer"
-
-# Get industries
-curl http://localhost:3001/api/companies/industries
-
-# Get student stats
-curl http://localhost:3001/api/students/stats
-
-# Get all industries
-curl http://localhost:3001/api/
-
-# Search tech roles
-curl "http://localhost:3001/api/search/tech-roles?q=Developer"
-
-# Get popular industries
-curl http://localhost:3001/api/popular/industries
-
-# Get tech skill suggestions
-curl "http://localhost:3001/api/suggestions/tech-skills?q=Java"
-
-# Clear cache (admin)
-curl -X POST http://localhost:3001/api/cache/clear
-```
 
 ---
 
