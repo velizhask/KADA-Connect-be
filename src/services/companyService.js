@@ -149,7 +149,11 @@ class CompanyService {
           company_website_link,
           company_logo,
           tech_roles_interest,
-          preferred_skillsets
+          preferred_skillsets,
+          contact_person_name,
+          contact_email,
+          contact_phone_number,
+          contact_info_visible
         `);
 
       // Build dynamic OR conditions for multiple search terms
@@ -520,6 +524,8 @@ class CompanyService {
   }
 
   transformCompanyData(company) {
+    const isContactInfoVisible = company['contact_info_visible'] === 'Yes';
+
     return {
       id: company.id,
       companyName: company['company_name'],
@@ -530,9 +536,9 @@ class CompanyService {
       techRoles: company['tech_roles_interest'],
       preferredSkillsets: company['preferred_skillsets'],
       contactPerson: company['contact_person_name'],
-      contactEmail: company['contact_email'],
-      contactPhone: company['contact_phone_number'],
-      contactInfoVisible: company['contact_info_visible'] === 'Yes'
+      contactEmail: isContactInfoVisible ? company['contact_email'] : null,
+      contactPhone: isContactInfoVisible ? company['contact_phone_number'] : null,
+      contactInfoVisible: isContactInfoVisible
     };
   }
 

@@ -1586,7 +1586,6 @@ List endpoints support consistent pagination:
 ## Rate Limit Configuration
 
 - **Standard endpoints**: 1000 requests per hour per IP
-- **Proxy endpoints**: 50 requests per 15 minutes per IP
 - **Search endpoints**: 200 requests per minute per IP
 - **Admin endpoints**: 100 requests per hour per admin key
 
