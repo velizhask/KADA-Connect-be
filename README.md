@@ -31,8 +31,6 @@ KADA Connect serves as a comprehensive talent-matching platform, enabling:
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Performance Optimizations](#performance-optimizations)
-- [Base64 Response Caching](#base64-response-caching-system)
-- [Google Drive Proxy](#google-drive-image-proxy-system)
 - [API Endpoints](#api-endpoints)
 - [Project Structure](#project-structure)
 
@@ -68,15 +66,12 @@ KADA Connect serves as a comprehensive talent-matching platform, enabling:
 - Advanced Caching: 1-hour TTL with versioned cache keys
 - Performance Optimized: Single-pass algorithms and efficient data structures
 - Cache Warming: Pre-populated cache for optimal response times
-- Search Performance: Optimized fuzzy search with relevance scoring
+- Search Performance: Optimized fuzzy search
 
 ### Proxy API - Image Processing Service
-- **Google Drive Integration**: Direct image proxy from Google Drive URLs bypassing CORS restrictions
-- **Automatic URL Transformation**: Converts Google Drive share links to direct download URLs
 - **Security Controls**: Domain allowlist for trusted sources and comprehensive rate limiting
 - **Multi-Layer Caching**: Server-side caching with 24-hour TTL and intelligent invalidation
 - **Performance Optimization**: Compressed responses and ETag support for conditional requests
-- **Fallback Mechanisms**: Graceful degradation when Google Drive API is unavailable
 - **Request Validation**: URL format checking, size limits, and accessibility verification
 
 ### Base64 Response Caching System
@@ -166,11 +161,6 @@ NODE_ENV=development
 # CORS Configuration
 ALLOWED_ORIGINS=http://localhost:3001,https://yourdomain.com
 
-# Google Drive API Configuration (for Image Proxy)
-GOOGLE_DRIVE_CLIENT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
-GOOGLE_DRIVE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
-GOOGLE_DRIVE_SERVICE_ACCOUNT_ID=your-service-account-id@your-project.iam.gserviceaccount.com
-
 # Proxy Configuration
 API_BASE_URL=http://localhost:3001
 ```
@@ -223,10 +213,8 @@ The detailed API documentation includes:
 ## Performance Optimizations
 
 ### Multi-Layer Caching Architecture
-- **Base64 Response Caching**: 2-hour TTL with intelligent memory management and 200MB cache limit
-- **Image Proxy Caching**: 24-hour TTL with ETag support and 500MB cache limit
+- **Image Caching**: 24-hour TTL with ETag support and 500MB cache limit
 - **Lookup Data Caching**: 1-hour TTL with versioned keys for cache invalidation
-- **Google Drive API Caching**: 1-hour TTL for API responses to reduce external calls
 
 ### Base64 Caching Performance
 - **300x Speed Improvement**: Cached responses reduced from 1.17s to 0.0039s
@@ -236,7 +224,7 @@ The detailed API documentation includes:
 - **Smart Invalidation**: Versioned cache keys ensure data consistency
 
 ### Image Proxy Performance
-- **Multi-Layer Caching**: Server-side and Google Drive API response caching
+- **Multi-Layer Caching**: Server-side response caching
 - **Compression**: Gzip compression reduces response sizes by 60-80%
 - **Rate Limiting**: 300 requests per 15 minutes with intelligent throttling
 - **Fallback Mechanisms**: Graceful degradation maintains service availability
@@ -300,7 +288,7 @@ A comprehensive Postman collection with 41 API endpoints is available:
 ### Common Issues and Solutions
 
 #### Base64 Caching Issues
-**Issue**: Slow initial response times for base64 image data
+**Issue**: Slow initial response times for image data
 **Solution**:
 - Check cache statistics using the `X-Cache-Stats` response header
 - Verify cache is warming up after server restart
@@ -310,21 +298,6 @@ A comprehensive Postman collection with 41 API endpoints is available:
 ```bash
 # Check cache performance
 curl -I http://localhost:3001/api/students | grep X-Cache-Stats
-```
-
-#### Google Drive Proxy Issues
-**Issue**: Google Drive images not loading through proxy
-**Solution**:
-- Verify Google Drive service account credentials are properly configured
-- Check that the Google Drive file is publicly accessible or shared with the service account
-- Ensure the Google Drive API is enabled in your Google Cloud project
-- Review rate limiting headers (`X-RateLimit-*`) for throttling information
-
-**Environment Check**:
-```bash
-# Verify environment variables
-echo $GOOGLE_DRIVE_CLIENT_EMAIL
-echo $GOOGLE_DRIVE_SERVICE_ACCOUNT_ID
 ```
 
 #### Database Connection Issues
