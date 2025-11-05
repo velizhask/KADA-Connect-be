@@ -152,6 +152,11 @@ class LookupService {
         .not(`"${column}"`, 'is', null)
         .not(`"${column}"`, 'eq', '');
 
+      // Add employment status filtering for students table to hide employed students
+      if (table === 'students') {
+        query = query.eq('employment_status', 'Open to work');
+      }
+
       if (limit) {
         query = query.limit(limit);
       }
@@ -227,7 +232,8 @@ class LookupService {
         .from('students')
         .select('tech_stack_skills')
         .not('tech_stack_skills', 'is', null)
-        .not('tech_stack_skills', 'eq', '');
+        .not('tech_stack_skills', 'eq', '')
+        .eq('employment_status', 'Open to work'); // Only include "Open to work" students
 
       if (error) {
         throw new Error(`Failed to extract tech skills: ${error.message}`);
@@ -405,7 +411,8 @@ class LookupService {
         .from('students')
         .select('tech_stack_skills')
         .not('tech_stack_skills', 'is', null)
-        .not('tech_stack_skills', 'eq', '');
+        .not('tech_stack_skills', 'eq', '')
+        .eq('employment_status', 'Open to work'); // Only include "Open to work" students
 
       if (error) {
         throw new Error(`Failed to get tech skills with count: ${error.message}`);
@@ -622,7 +629,8 @@ class LookupService {
         .from('students')
         .select('university_institution')
         .not('university_institution', 'is', null)
-        .not('university_institution', 'eq', '');
+        .not('university_institution', 'eq', '')
+        .eq('employment_status', 'Open to work'); // Only include "Open to work" students
 
       if (error) {
         throw new Error(`Failed to get universities with count: ${error.message}`);
@@ -675,7 +683,8 @@ class LookupService {
         .from('students')
         .select('program_major')
         .not('program_major', 'is', null)
-        .not('program_major', 'eq', '');
+        .not('program_major', 'eq', '')
+        .eq('employment_status', 'Open to work'); // Only include "Open to work" students
 
       if (error) {
         throw new Error(`Failed to get majors with count: ${error.message}`);

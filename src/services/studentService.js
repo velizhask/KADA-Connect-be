@@ -4,9 +4,15 @@ const { base64ResponseCache } = require('./base64ResponseCacheService');
 class StudentService {
   async getAllStudents(filters = {}) {
     try {
+      // Add employment status to filters for proper cache key generation
+      const cacheFilters = {
+        ...filters,
+        employmentStatus: 'Open to work' // Include employment status in cache key
+      };
+
       // Check cache first for list responses
       const cacheKey = 'getAllStudents';
-      const cachedResponse = base64ResponseCache.getAPIResponse(cacheKey, filters);
+      const cachedResponse = base64ResponseCache.getAPIResponse(cacheKey, cacheFilters);
 
       if (cachedResponse) {
         console.log('[CACHE HIT] Returning cached students list');
@@ -19,6 +25,7 @@ class StudentService {
           id,
           full_name,
           status,
+          employment_status,
           university_institution,
           program_major,
           preferred_industry,
@@ -53,6 +60,9 @@ class StudentService {
         query = query.ilike('tech_stack_skills', `%${filters.skills}%`);
       }
 
+      // Filter out employed students - only show "Open to work" students
+      query = query.eq('employment_status', 'Open to work');
+
       // Apply pagination
       const page = parseInt(filters.page) || 1;
       const limit = parseInt(filters.limit) || 20;
@@ -83,7 +93,7 @@ class StudentService {
       };
 
       // Cache the response
-      base64ResponseCache.setAPIResponse(cacheKey, filters, response);
+      base64ResponseCache.setAPIResponse(cacheKey, cacheFilters, response);
       console.log('[CACHE MISS] Stored students list in cache');
 
       return response;
@@ -97,7 +107,11 @@ class StudentService {
     try {
       // Check cache first for individual student
       const cacheKey = 'getStudentById';
-      const cachedResponse = base64ResponseCache.getAPIResponse(cacheKey, { id });
+      const cacheParams = {
+        id,
+        employmentStatus: 'Open to work' // Include employment status in cache key
+      };
+      const cachedResponse = base64ResponseCache.getAPIResponse(cacheKey, cacheParams);
 
       if (cachedResponse) {
         console.log('[CACHE HIT] Returning cached student:', id);
@@ -110,6 +124,7 @@ class StudentService {
           id,
           "full_name",
           status,
+          employment_status,
           university_institution,
           program_major,
           preferred_industry,
@@ -133,10 +148,15 @@ class StudentService {
         throw new Error('Failed to fetch student');
       }
 
+      // Check if student is employed - if so, don't return their data
+      if (data['employment_status'] === 'Employed') {
+        return null; // Hide employed students
+      }
+
       const transformedData = this.transformStudentData(data);
 
       // Cache the individual student response
-      base64ResponseCache.setAPIResponse(cacheKey, { id }, transformedData);
+      base64ResponseCache.setAPIResponse(cacheKey, cacheParams, transformedData);
       console.log('[CACHE MISS] Stored student in cache:', id);
 
       return transformedData;
@@ -162,6 +182,7 @@ class StudentService {
           id,
           full_name,
           status,
+          employment_status,
           university_institution,
           program_major,
           preferred_industry,
@@ -208,6 +229,9 @@ class StudentService {
         query = query.ilike('tech_stack_skills', `%${filters.skills}%`);
       }
 
+      // Filter out employed students - only show "Open to work" students
+      query = query.eq('employment_status', 'Open to work');
+
       const { data, error } = await query
         .order('full_name')
         .limit(50); // Limit search results
@@ -235,6 +259,7 @@ class StudentService {
           id,
           "full_name",
           status,
+          employment_status,
           university_institution,
           program_major,
           preferred_industry,
@@ -243,6 +268,7 @@ class StudentService {
           linkedin
         `)
         .ilike('status', status)
+        .eq('employment_status', 'Open to work') // Only show "Open to work" students
         .order('full_name');
 
       if (error) {
@@ -263,6 +289,7 @@ class StudentService {
       const { data, error } = await supabase
         .from('students')
         .select('university_institution')
+        .eq('employment_status', 'Open to work') // Only include "Open to work" students
         .not('university_institution', 'is', null);
 
       if (error) {
@@ -287,6 +314,7 @@ class StudentService {
       const { data, error } = await supabase
         .from('students')
         .select('program_major')
+        .eq('employment_status', 'Open to work') // Only include "Open to work" students
         .not('program_major', 'is', null);
 
       if (error) {
@@ -311,6 +339,7 @@ class StudentService {
       const { data, error } = await supabase
         .from('students')
         .select('preferred_industry')
+        .eq('employment_status', 'Open to work') // Only include "Open to work" students
         .not('preferred_industry', 'is', null);
 
       if (error) {
@@ -335,6 +364,7 @@ class StudentService {
       const { data, error } = await supabase
         .from('students')
         .select('tech_stack_skills')
+        .eq('employment_status', 'Open to work') // Only include "Open to work" students
         .not('tech_stack_skills', 'is', null);
 
       if (error) {
@@ -367,7 +397,8 @@ class StudentService {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('status, university_institution, program_major, preferred_industry, tech_stack_skills');
+        .select('status, employment_status, university_institution, program_major, preferred_industry, tech_stack_skills')
+        .eq('employment_status', 'Open to work'); // Only include "Open to work" students in stats
 
       if (error) {
         console.error('[ERROR] Failed to fetch student stats:', error.message);
@@ -435,6 +466,7 @@ class StudentService {
           id,
           "full_name",
           status,
+          employment_status,
           university_institution,
           program_major,
           preferred_industry,
@@ -455,6 +487,11 @@ class StudentService {
       }
 
       console.log('[SUCCESS] Student created successfully with ID:', data.id);
+
+      // Clear cache for new student (especially if employment status affects visibility)
+      console.log('[CACHE] Clearing student cache due to new student creation');
+      base64ResponseCache.clearAll();
+
       const transformedData = this.transformStudentData(data);
       return transformedData;
     } catch (error) {
@@ -476,6 +513,7 @@ class StudentService {
           id,
           "full_name",
           status,
+          employment_status,
           university_institution,
           program_major,
           preferred_industry,
@@ -499,6 +537,13 @@ class StudentService {
       }
 
       console.log('[SUCCESS] Student updated successfully with ID:', data.id);
+
+      // Clear cache if employment status was updated
+      if (updateData.employmentStatus || dbData['employment_status']) {
+        console.log('[CACHE] Clearing student cache due to employment status update');
+        base64ResponseCache.clearAll();
+      }
+
       const transformedData = this.transformStudentData(data);
       return transformedData;
     } catch (error) {
@@ -525,6 +570,7 @@ class StudentService {
           id,
           "full_name",
           status,
+          employment_status,
           university_institution,
           program_major,
           preferred_industry,
@@ -548,6 +594,13 @@ class StudentService {
       }
 
       console.log('[SUCCESS] Student patched successfully with ID:', data.id);
+
+      // Clear cache if employment status was updated
+      if (patchData.employmentStatus || dbData['employment_status']) {
+        console.log('[CACHE] Clearing student cache due to employment status update');
+        base64ResponseCache.clearAll();
+      }
+
       const transformedData = this.transformStudentData(data);
       return transformedData;
     } catch (error) {
@@ -574,6 +627,11 @@ class StudentService {
       }
 
       console.log('[SUCCESS] Student deleted successfully with ID:', data.id);
+
+      // Clear cache for deleted student
+      console.log('[CACHE] Clearing student cache due to student deletion');
+      base64ResponseCache.clearAll();
+
       return {
         id: data.id,
         fullName: data['full_name'],
@@ -589,6 +647,7 @@ class StudentService {
     return {
       'full_name': studentData.fullName,
       'status': studentData.status,
+      'employment_status': studentData.employmentStatus,
       'university_institution': studentData.university,
       'program_major': studentData.major,
       'preferred_industry': studentData.preferredIndustry,
@@ -611,6 +670,9 @@ class StudentService {
     }
     if (patchData.status !== undefined) {
       dbData['status'] = patchData.status;
+    }
+    if (patchData.employmentStatus !== undefined) {
+      dbData['employment_status'] = patchData.employmentStatus;
     }
     if (patchData.university !== undefined) {
       dbData['university_institution'] = patchData.university;
@@ -652,6 +714,7 @@ class StudentService {
       id: student.id,
       fullName: student['full_name'],
       status: student['status'],
+      employmentStatus: student['employment_status'],
       university: student['university_institution'],
       major: student['program_major'],
       preferredIndustry: student['preferred_industry'],
