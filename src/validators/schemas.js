@@ -105,6 +105,10 @@ const studentSchemas = {
       'any.only': 'Status must be either "Current Trainee" or "Alumni"',
       'any.required': 'Status is required'
     }),
+    employmentStatus: Joi.string().valid('Employed', 'Open to work').required().messages({
+      'any.only': 'Employment status must be either "Employed" or "Open to work"',
+      'any.required': 'Employment status is required'
+    }),
     university: Joi.string().min(1).max(100).required().messages({
       'string.min': 'University cannot be empty',
       'string.max': 'University cannot exceed 100 characters',
@@ -154,6 +158,9 @@ const studentSchemas = {
     }),
     status: Joi.string().valid('Current Trainee', 'Alumni').optional().messages({
       'any.only': 'Status must be either "Current Trainee" or "Alumni"'
+    }),
+    employmentStatus: Joi.string().valid('Employed', 'Open to work').optional().messages({
+      'any.only': 'Employment status must be either "Employed" or "Open to work"'
     }),
     university: Joi.string().min(1).max(100).optional().messages({
       'string.min': 'University cannot be empty',

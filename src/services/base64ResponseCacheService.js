@@ -9,6 +9,9 @@ const crypto = require('crypto');
 
 class Base64ResponseCacheService {
   constructor(options = {}) {
+    // Cache version for employment status filtering changes
+    this.cacheVersion = 'emp-status-v1'; // Increment when employment status logic changes
+
     // Cache for base64 responses (2 hour TTL)
     this.responseCache = new NodeCache({
       stdTTL: 2 * 60 * 60, // 2 hours in seconds
@@ -173,13 +176,14 @@ class Base64ResponseCacheService {
   setAPIResponse(endpointKey, params, responseData) {
     const paramString = JSON.stringify(params);
     const hash = crypto.createHash('md5').update(paramString).digest('hex').substring(0, 8);
-    const key = `api:${endpointKey}:${hash}`;
+    const key = `api:${this.cacheVersion}:${endpointKey}:${hash}`;
 
     const cacheData = {
       data: responseData,
       timestamp: Date.now(),
       endpoint: endpointKey,
       params,
+      cacheVersion: this.cacheVersion,
       eTag: this.generateETag(responseData)
     };
 
@@ -193,7 +197,7 @@ class Base64ResponseCacheService {
   getAPIResponse(endpointKey, params) {
     const paramString = JSON.stringify(params);
     const hash = crypto.createHash('md5').update(paramString).digest('hex').substring(0, 8);
-    const key = `api:${endpointKey}:${hash}`;
+    const key = `api:${this.cacheVersion}:${endpointKey}:${hash}`;
 
     const cached = this.responseCache.get(key);
 
