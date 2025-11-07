@@ -88,6 +88,7 @@ app.get('/api', (req, res) => {
       universities: '/api/universities',
       majors: '/api/majors',
       techRoles: '/api/tech-roles',
+      preferredIndustries: '/api/preferred-industries',
       docs: '/api/docs'
     }
   });
@@ -129,19 +130,22 @@ app.get('/api/docs', (req, res) => {
         'GET /tech-roles': 'Get tech roles list',
         'GET /tech-role-categories': 'Get tech role categories',
         'GET /tech-roles/category/:category': 'Get tech roles by category',
+        'GET /preferred-industries': 'Get preferred industries from students',
         'GET /search/industries': 'Search industries',
         'GET /search/tech-roles': 'Search tech roles',
+        'GET /search/preferred-industries': 'Search preferred industries',
         'GET /suggestions/tech-skills': 'Get tech skill suggestions',
         'GET /universities': 'Returns array of unique universities',
         'GET /search/universities?q=query': 'Search universities with fuzzy matching',
         'GET /popular/universities': 'Universities sorted by student count',
-        'GET /majors:': 'Returns array of unique academic majors',
+        'GET /majors': 'Returns array of unique academic majors',
         'GET /search/majors?q=query': 'Search majors with fuzzy matching',
         'GET /popular/majors': 'Majors sorted by student count',
         'POST /validate/tech-skills': 'Validate tech skills array',
         'GET /popular/industries': 'Get popular industries',
         'GET /popular/tech-roles': 'Get popular tech roles',
         'GET /popular/tech-skills': 'Get popular tech skills',
+        'GET /popular/preferred-industries': 'Get popular preferred industries',
         'POST /cache/clear': 'Clear lookup cache (admin only)',
         'GET /cache/status': 'Get cache status'
       }

@@ -197,7 +197,7 @@ http://localhost:3001/api
 |--------------|-----------|-------------|
 | **Companies** | 11 endpoints | Company profiles, search, statistics |
 | **Students** | 15 endpoints | Student profiles, filtering, analytics |
-| **Lookup** | 22 endpoints | Reference data, search, caching |
+| **Lookup** | 25 endpoints | Reference data, search, caching |
 | **Proxy** | 4 endpoints | Image proxy service with security |
 | **System** | 3 endpoints | Health checks, API overview |
 
