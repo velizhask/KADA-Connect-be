@@ -37,6 +37,12 @@ router.get('/universities', lookupController.getUniversities);
 router.get('/majors', lookupController.getMajors);
 
 /**
+ * GET /api/preferred-industries
+ * Get all unique preferred industries
+ */
+router.get('/preferred-industries', lookupController.getPreferredIndustries);
+
+/**
  * GET /api/tech-roles/category/:category
  * Get tech roles by specific category
  */
@@ -65,6 +71,12 @@ router.get('/search/universities', validateSearchQuery, lookupController.searchU
  * Search majors with query parameter
  */
 router.get('/search/majors', validateSearchQuery, lookupController.searchMajors);
+
+/**
+ * GET /api/search/preferred-industries
+ * Search preferred industries with query parameter
+ */
+router.get('/search/preferred-industries', validateSearchQuery, lookupController.searchPreferredIndustries);
 
 /**
  * GET /api/suggestions/tech-skills
@@ -113,6 +125,12 @@ router.get('/popular/universities', lookupController.getPopularUniversities);
  * Get most popular majors by count
  */
 router.get('/popular/majors', lookupController.getPopularMajors);
+
+/**
+ * GET /api/popular/preferred-industries
+ * Get most popular preferred industries by count
+ */
+router.get('/popular/preferred-industries', lookupController.getPopularPreferredIndustries);
 
 /**
  * POST /api/cache/clear

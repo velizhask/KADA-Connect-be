@@ -936,6 +936,56 @@ curl http://localhost:3001/api/universities
 curl http://localhost:3001/api/majors
 ```
 
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Majors retrieved successfully",
+  "data": [
+    "Computer Science",
+    "Electrical Engineering",
+    "Information Systems",
+    "Data Science",
+    "Software Engineering"
+  ],
+  "count": 5,
+  "timestamp": "2025-11-07T10:30:00.000Z"
+}
+```
+
+---
+
+## GET /api/preferred-industries
+**Description**: Get comprehensive list of preferred industries from students who are "Open to work".
+
+**Return Value**: Array of preferred industry names sorted alphabetically
+
+**Example**:
+```bash
+curl http://localhost:3001/api/preferred-industries
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Preferred industries retrieved successfully",
+  "data": [
+    "Technology",
+    "Finance",
+    "Healthcare",
+    "E-commerce",
+    "Education",
+    "Manufacturing",
+    "Telecommunications"
+  ],
+  "count": 7,
+  "timestamp": "2025-11-07T10:30:00.000Z"
+}
+```
+
+**Notes**: Only includes students with employment_status = "Open to work". Supports comma-separated industry preferences (e.g., "Technology, Finance" becomes two separate entries).
+
 ---
 
 ## GET /api/tech-roles
@@ -1113,6 +1163,45 @@ curl "http://localhost:3001/api/search/majors?q=computer&limit=5"
 
 ---
 
+## GET /api/search/preferred-industries
+**Description**: Search preferred industries with fuzzy matching.
+
+**Parameters**:
+- `q` (query, required): Search query
+- `limit` (query, optional): Maximum results. Default: 10
+
+**Return Value**: Array of matching preferred industries
+
+**Example**:
+```bash
+curl "http://localhost:3001/api/search/preferred-industries?q=tech&limit=5"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Preferred industry search completed successfully",
+  "data": [
+    {
+      "name": "Technology"
+    },
+    {
+      "name": "Information Technology"
+    },
+    {
+      "name": "Tech Startups"
+    }
+  ],
+  "query": "tech",
+  "count": 3,
+  "totalAvailable": 25,
+  "timestamp": "2025-11-07T10:30:00.000Z"
+}
+```
+
+---
+
 ## GET /api/search/tech-roles
 **Description**: Search tech roles with fuzzy matching.
 
@@ -1222,6 +1311,56 @@ curl "http://localhost:3001/api/popular/industries?limit=10"
   "timestamp": "2025-10-29T15:03:20.749Z"
 }
 ```
+
+---
+
+## GET /api/popular/preferred-industries
+**Description**: Get most popular preferred industries ranked by usage count from students who are "Open to work".
+
+**Parameters**:
+- `limit` (query, optional): Number of results. Default: 10
+
+**Return Value**: Array of popular preferred industries with counts
+
+**Example**:
+```bash
+curl "http://localhost:3001/api/popular/preferred-industries?limit=10"
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Popular preferred industries retrieved successfully",
+  "data": [
+    {
+      "name": "Technology",
+      "count": 245
+    },
+    {
+      "name": "Finance",
+      "count": 189
+    },
+    {
+      "name": "Healthcare",
+      "count": 156
+    },
+    {
+      "name": "E-commerce",
+      "count": 134
+    },
+    {
+      "name": "Education",
+      "count": 98
+    }
+  ],
+  "count": 5,
+  "totalAvailable": 15,
+  "timestamp": "2025-11-07T10:30:00.000Z"
+}
+```
+
+**Notes**: Only includes students with employment_status = "Open to work". Counts reflect individual industry preferences, even when students have multiple comma-separated preferences.
 
 ---
 
