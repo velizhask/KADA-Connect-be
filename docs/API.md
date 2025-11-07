@@ -1200,8 +1200,6 @@ curl "http://localhost:3001/api/search/preferred-industries?q=tech&limit=5"
 }
 ```
 
-**Notes**: Uses fuzzy matching algorithm with scoring. Exact matches get highest score, followed by starts-with, then contains queries.
-
 ---
 
 ## GET /api/search/tech-roles

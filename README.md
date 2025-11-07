@@ -68,13 +68,8 @@ KADA Connect serves as a comprehensive talent-matching platform, enabling:
 - Cache Warming: Pre-populated cache for optimal response times
 - Search Performance: Optimized fuzzy search
 
-### Proxy API - Image Processing Service
-- **Security Controls**: Domain allowlist for trusted sources and comprehensive rate limiting
-- **Multi-Layer Caching**: Server-side caching with 24-hour TTL and intelligent invalidation
-- **Performance Optimization**: Compressed responses and ETag support for conditional requests
-- **Request Validation**: URL format checking, size limits, and accessibility verification
 
-### Base64 Response Caching System
+### Response Caching System
 - **High-Performance Caching**: 2-hour TTL with intelligent cache management
 - **Memory Efficient**: 200MB cache limit with automatic cleanup
 - **ETag Support**: Conditional requests for bandwidth optimization
@@ -216,14 +211,14 @@ The detailed API documentation includes:
 - **Image Caching**: 24-hour TTL with ETag support and 500MB cache limit
 - **Lookup Data Caching**: 1-hour TTL with versioned keys for cache invalidation
 
-### Base64 Caching Performance
+### Caching Performance
 - **300x Speed Improvement**: Cached responses reduced from 1.17s to 0.0039s
 - **ETag Support**: Conditional requests reduce bandwidth usage by 60-80%
 - **Memory Management**: Automatic cleanup with LRU eviction when cache limits reached
 - **Cache Hit Rate**: Real-time monitoring shows 90%+ hit rates for frequently accessed data
 - **Smart Invalidation**: Versioned cache keys ensure data consistency
 
-### Image Proxy Performance
+### Image Performance
 - **Multi-Layer Caching**: Server-side response caching
 - **Compression**: Gzip compression reduces response sizes by 60-80%
 - **Rate Limiting**: 300 requests per 15 minutes with intelligent throttling
@@ -287,7 +282,7 @@ A comprehensive Postman collection with 41 API endpoints is available:
 
 ### Common Issues and Solutions
 
-#### Base64 Caching Issues
+#### Caching Issues
 **Issue**: Slow initial response times for image data
 **Solution**:
 - Check cache statistics using the `X-Cache-Stats` response header
