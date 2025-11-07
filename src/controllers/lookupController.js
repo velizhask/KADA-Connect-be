@@ -597,6 +597,75 @@ class LookupController {
       next(error);
     }
   }
+
+  /**
+   * GET /api/preferred-industries
+   * Get all unique preferred industries
+   */
+  async getPreferredIndustries(req, res, next) {
+    try {
+      const preferredIndustries = await lookupService.getPreferredIndustries();
+
+      res.status(200).json({
+        success: true,
+        message: 'Preferred industries retrieved successfully',
+        data: preferredIndustries,
+        count: preferredIndustries.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/search/preferred-industries
+   * Search preferred industries with query parameter
+   */
+  async searchPreferredIndustries(req, res, next) {
+    try {
+      const { q: query, limit = 10 } = req.query;
+
+      const preferredIndustries = await lookupService.getPreferredIndustries();
+      const results = lookupService.searchInList(preferredIndustries, query, parseInt(limit));
+
+      res.status(200).json({
+        success: true,
+        message: 'Preferred industry search completed successfully',
+        data: results,
+        query,
+        count: results.length,
+        totalAvailable: preferredIndustries.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/popular/preferred-industries
+   * Get most popular preferred industries by count
+   */
+  async getPopularPreferredIndustries(req, res, next) {
+    try {
+      const { limit = 10 } = req.query;
+
+      const preferredIndustriesWithCount = await lookupService.getPreferredIndustriesWithCount();
+      const popularPreferredIndustries = preferredIndustriesWithCount.slice(0, parseInt(limit));
+
+      res.status(200).json({
+        success: true,
+        message: 'Popular preferred industries retrieved successfully',
+        data: popularPreferredIndustries,
+        count: popularPreferredIndustries.length,
+        totalAvailable: preferredIndustriesWithCount.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new LookupController();
