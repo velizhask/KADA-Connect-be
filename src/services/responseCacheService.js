@@ -9,8 +9,8 @@ const crypto = require('crypto');
 
 class ResponseCacheService {
   constructor(options = {}) {
-    // Cache version for employment status filtering changes
-    this.cacheVersion = 'emp-status-v1'; // Increment when employment status logic changes
+    // Cache version for privacy changes (phone number removal)
+    this.cacheVersion = 'privacy-v2'; // Updated for phone number exclusion from public endpoints
 
     // Cache for API responses (1 hour TTL - optimized for memory)
     this.responseCache = new NodeCache({
