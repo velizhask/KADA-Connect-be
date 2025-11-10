@@ -1,5 +1,5 @@
 const { supabase } = require('../db');
-const { base64ResponseCache } = require('./base64ResponseCacheService');
+const { responseCache } = require('./responseCacheService');
 
 class StudentService {
   async getAllStudents(filters = {}) {
@@ -12,7 +12,7 @@ class StudentService {
 
       // Check cache first for list responses
       const cacheKey = 'getAllStudents';
-      const cachedResponse = base64ResponseCache.getAPIResponse(cacheKey, cacheFilters);
+      const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheFilters);
 
       if (cachedResponse) {
         console.log('[CACHE HIT] Returning cached students list');
@@ -79,8 +79,8 @@ class StudentService {
         throw new Error('Failed to fetch students');
       }
 
-      // Transform data to camelCase for API consistency
-      const transformedData = data.map(student => this.transformStudentData(student));
+      // Transform data to camelCase for API consistency (excluding phone numbers for public API)
+      const transformedData = data.map(student => this.transformStudentDataPublic(student));
 
       const response = {
         students: transformedData,
@@ -93,7 +93,7 @@ class StudentService {
       };
 
       // Cache the response
-      base64ResponseCache.setAPIResponse(cacheKey, cacheFilters, response);
+      responseCache.setAPIResponse(cacheKey, cacheFilters, response);
       console.log('[CACHE MISS] Stored students list in cache');
 
       return response;
@@ -111,7 +111,7 @@ class StudentService {
         id,
         employmentStatus: 'Open to work' // Include employment status in cache key
       };
-      const cachedResponse = base64ResponseCache.getAPIResponse(cacheKey, cacheParams);
+      const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheParams);
 
       if (cachedResponse) {
         console.log('[CACHE HIT] Returning cached student:', id);
@@ -153,10 +153,10 @@ class StudentService {
         return null; // Hide employed students
       }
 
-      const transformedData = this.transformStudentData(data);
+      const transformedData = this.transformStudentDataPublic(data);
 
       // Cache the individual student response
-      base64ResponseCache.setAPIResponse(cacheKey, cacheParams, transformedData);
+      responseCache.setAPIResponse(cacheKey, cacheParams, transformedData);
       console.log('[CACHE MISS] Stored student in cache:', id);
 
       return transformedData;
@@ -243,7 +243,7 @@ class StudentService {
         throw new Error('Failed to search students');
       }
 
-      const results = data.map(student => this.transformStudentData(student));
+      const results = data.map(student => this.transformStudentDataPublic(student));
       return results;
     } catch (error) {
       console.error('[ERROR] StudentService.searchStudents:', error.message);
@@ -276,7 +276,7 @@ class StudentService {
         throw new Error('Failed to fetch students by status');
       }
 
-      const transformedResults = data.map(student => this.transformStudentData(student));
+      const transformedResults = data.map(student => this.transformStudentDataPublic(student));
       return transformedResults;
     } catch (error) {
       console.error('[ERROR] StudentService.getStudentsByStatus:', error.message);
@@ -490,7 +490,7 @@ class StudentService {
 
       // Clear cache for new student (especially if employment status affects visibility)
       console.log('[CACHE] Clearing student cache due to new student creation');
-      base64ResponseCache.clearAll();
+      responseCache.clearAll();
 
       const transformedData = this.transformStudentData(data);
       return transformedData;
@@ -541,7 +541,7 @@ class StudentService {
       // Clear cache if employment status was updated
       if (updateData.employmentStatus || dbData['employment_status']) {
         console.log('[CACHE] Clearing student cache due to employment status update');
-        base64ResponseCache.clearAll();
+        responseCache.clearAll();
       }
 
       const transformedData = this.transformStudentData(data);
@@ -598,7 +598,7 @@ class StudentService {
       // Clear cache if employment status was updated
       if (patchData.employmentStatus || dbData['employment_status']) {
         console.log('[CACHE] Clearing student cache due to employment status update');
-        base64ResponseCache.clearAll();
+        responseCache.clearAll();
       }
 
       const transformedData = this.transformStudentData(data);
@@ -630,7 +630,7 @@ class StudentService {
 
       // Clear cache for deleted student
       console.log('[CACHE] Clearing student cache due to student deletion');
-      base64ResponseCache.clearAll();
+      responseCache.clearAll();
 
       return {
         id: data.id,
@@ -709,6 +709,44 @@ class StudentService {
     return dbData;
   }
 
+  /**
+   * Transform student data for public API responses (excludes phone number)
+   * @param {Object} student - Raw student data from database
+   * @returns {Object} Transformed student data without phone number
+   */
+  transformStudentDataPublic(student) {
+    return {
+      id: student.id,
+      fullName: student['full_name'],
+      status: student['status'],
+      employmentStatus: student['employment_status'],
+      university: student['university_institution'],
+      major: student['program_major'],
+      preferredIndustry: student['preferred_industry'],
+      techStack: student['tech_stack_skills'],
+      selfIntroduction: student['self_introduction'],
+      cvUpload: student['cv_upload'],
+      profilePhoto: student['profile_photo'],
+      linkedin: student['linkedin'],
+      portfolioLink: student['portfolio_link'],
+      timestamp: student['timestamp']
+    };
+  }
+
+  /**
+   * Transform student list data for public API responses (excludes phone numbers)
+   * @param {Array} students - Array of student data from database
+   * @returns {Array} Transformed student data without phone numbers
+   */
+  transformStudentListPublic(students) {
+    return students.map(student => this.transformStudentDataPublic(student));
+  }
+
+  /**
+   * Transform student data for API responses (includes phone number - for internal use)
+   * @param {Object} student - Raw student data from database
+   * @returns {Object} Transformed student data with phone number
+   */
   transformStudentData(student) {
     return {
       id: student.id,

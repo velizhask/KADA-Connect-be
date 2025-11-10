@@ -4,6 +4,7 @@
  */
 
 const lookupService = require('../services/lookupService');
+const { responseCache } = require('../services/responseCacheService');
 
 class LookupController {
   /**
@@ -344,18 +345,31 @@ class LookupController {
   async getPopularIndustries(req, res, next) {
     try {
       const { limit = 10 } = req.query;
+      const cacheKey = 'getPopularIndustries';
+      const cacheParams = { limit };
+
+      // Check cache first
+      const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheParams);
+      if (cachedResponse) {
+        return res.status(200).json(cachedResponse.data);
+      }
 
       const industriesWithCount = await lookupService.getIndustriesWithCount();
       const popularIndustries = industriesWithCount.slice(0, parseInt(limit));
 
-      res.status(200).json({
+      const response = {
         success: true,
         message: 'Popular industries retrieved successfully',
         data: popularIndustries,
         count: popularIndustries.length,
         totalAvailable: industriesWithCount.length,
         timestamp: new Date().toISOString()
-      });
+      };
+
+      // Cache the response
+      responseCache.setAPIResponse(cacheKey, cacheParams, response);
+
+      res.status(200).json(response);
     } catch (error) {
       next(error);
     }
@@ -368,18 +382,31 @@ class LookupController {
   async getPopularTechRoles(req, res, next) {
     try {
       const { limit = 10 } = req.query;
+      const cacheKey = 'getPopularTechRoles';
+      const cacheParams = { limit };
+
+      // Check cache first
+      const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheParams);
+      if (cachedResponse) {
+        return res.status(200).json(cachedResponse.data);
+      }
 
       const techRolesWithCount = await lookupService.getTechRolesWithCount();
       const popularTechRoles = techRolesWithCount.slice(0, parseInt(limit));
 
-      res.status(200).json({
+      const response = {
         success: true,
         message: 'Popular tech roles retrieved successfully',
         data: popularTechRoles,
         count: popularTechRoles.length,
         totalAvailable: techRolesWithCount.length,
         timestamp: new Date().toISOString()
-      });
+      };
+
+      // Cache the response
+      responseCache.setAPIResponse(cacheKey, cacheParams, response);
+
+      res.status(200).json(response);
     } catch (error) {
       next(error);
     }
@@ -392,18 +419,31 @@ class LookupController {
   async getPopularTechSkills(req, res, next) {
     try {
       const { limit = 20 } = req.query;
+      const cacheKey = 'getPopularTechSkills';
+      const cacheParams = { limit };
+
+      // Check cache first
+      const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheParams);
+      if (cachedResponse) {
+        return res.status(200).json(cachedResponse.data);
+      }
 
       const techSkillsWithCount = await lookupService.getTechSkillsWithCount();
       const popularTechSkills = techSkillsWithCount.slice(0, parseInt(limit));
 
-      res.status(200).json({
+      const response = {
         success: true,
         message: 'Popular tech skills retrieved successfully',
         data: popularTechSkills,
         count: popularTechSkills.length,
         totalAvailable: techSkillsWithCount.length,
         timestamp: new Date().toISOString()
-      });
+      };
+
+      // Cache the response
+      responseCache.setAPIResponse(cacheKey, cacheParams, response);
+
+      res.status(200).json(response);
     } catch (error) {
       next(error);
     }
@@ -557,18 +597,31 @@ class LookupController {
   async getPopularUniversities(req, res, next) {
     try {
       const { limit = 10 } = req.query;
+      const cacheKey = 'getPopularUniversities';
+      const cacheParams = { limit };
+
+      // Check cache first
+      const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheParams);
+      if (cachedResponse) {
+        return res.status(200).json(cachedResponse.data);
+      }
 
       const universitiesWithCount = await lookupService.getUniversitiesWithCount();
       const popularUniversities = universitiesWithCount.slice(0, parseInt(limit));
 
-      res.status(200).json({
+      const response = {
         success: true,
         message: 'Popular universities retrieved successfully',
         data: popularUniversities,
         count: popularUniversities.length,
         totalAvailable: universitiesWithCount.length,
         timestamp: new Date().toISOString()
-      });
+      };
+
+      // Cache the response
+      responseCache.setAPIResponse(cacheKey, cacheParams, response);
+
+      res.status(200).json(response);
     } catch (error) {
       next(error);
     }
@@ -581,18 +634,31 @@ class LookupController {
   async getPopularMajors(req, res, next) {
     try {
       const { limit = 10 } = req.query;
+      const cacheKey = 'getPopularMajors';
+      const cacheParams = { limit };
+
+      // Check cache first
+      const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheParams);
+      if (cachedResponse) {
+        return res.status(200).json(cachedResponse.data);
+      }
 
       const majorsWithCount = await lookupService.getMajorsWithCount();
       const popularMajors = majorsWithCount.slice(0, parseInt(limit));
 
-      res.status(200).json({
+      const response = {
         success: true,
         message: 'Popular majors retrieved successfully',
         data: popularMajors,
         count: popularMajors.length,
         totalAvailable: majorsWithCount.length,
         timestamp: new Date().toISOString()
-      });
+      };
+
+      // Cache the response
+      responseCache.setAPIResponse(cacheKey, cacheParams, response);
+
+      res.status(200).json(response);
     } catch (error) {
       next(error);
     }
@@ -650,18 +716,31 @@ class LookupController {
   async getPopularPreferredIndustries(req, res, next) {
     try {
       const { limit = 10 } = req.query;
+      const cacheKey = 'getPopularPreferredIndustries';
+      const cacheParams = { limit };
+
+      // Check cache first
+      const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheParams);
+      if (cachedResponse) {
+        return res.status(200).json(cachedResponse.data);
+      }
 
       const preferredIndustriesWithCount = await lookupService.getPreferredIndustriesWithCount();
       const popularPreferredIndustries = preferredIndustriesWithCount.slice(0, parseInt(limit));
 
-      res.status(200).json({
+      const response = {
         success: true,
         message: 'Popular preferred industries retrieved successfully',
         data: popularPreferredIndustries,
         count: popularPreferredIndustries.length,
         totalAvailable: preferredIndustriesWithCount.length,
         timestamp: new Date().toISOString()
-      });
+      };
+
+      // Cache the response
+      responseCache.setAPIResponse(cacheKey, cacheParams, response);
+
+      res.status(200).json(response);
     } catch (error) {
       next(error);
     }

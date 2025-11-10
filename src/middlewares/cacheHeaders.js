@@ -3,7 +3,7 @@
  * Adds proper caching headers to API responses for improved performance
  */
 
-const { base64ResponseCache } = require('../services/base64ResponseCacheService');
+const { responseCache } = require('../services/responseCacheService');
 
 /**
  * Middleware to add cache headers to API responses
@@ -41,7 +41,7 @@ const cacheHeaders = (options = {}) => {
 
       // Add ETag if enabled and data is available
       if (useETag && data) {
-        const eTag = base64ResponseCache.generateETag(data);
+        const eTag = responseCache.generateETag(data);
         res.set('ETag', eTag);
 
         // Handle If-None-Match for conditional requests
@@ -76,21 +76,41 @@ const base64CacheHeaders = cacheHeaders({
 });
 
 /**
+ * Middleware for static lookup data (industries, majors, universities)
+ * Uses very long cache time for rarely changing data
+ */
+const staticCacheHeaders = cacheHeaders({
+  maxAge: 24 * 60 * 60, // 24 hours for static lookup data
+  private: false,
+  etag: true
+});
+
+/**
+ * Middleware for popular endpoints (aggregation queries)
+ * Uses long cache time for computed popular data
+ */
+const popularCacheHeaders = cacheHeaders({
+  maxAge: 12 * 60 * 60, // 12 hours for popular endpoints
+  private: false,
+  etag: true
+});
+
+/**
  * Middleware for list responses (students/companies)
- * Uses moderate cache time
+ * Uses extended cache time for filtered lists
  */
 const listCacheHeaders = cacheHeaders({
-  maxAge: 1 * 60 * 60, // 1 hour for lists
+  maxAge: 6 * 60 * 60, // 6 hours for lists (increased from 1 hour)
   private: false,
   etag: true
 });
 
 /**
  * Middleware for individual resource responses
- * Uses shorter cache time
+ * Uses moderate cache time
  */
 const resourceCacheHeaders = cacheHeaders({
-  maxAge: 30 * 60, // 30 minutes for individual resources
+  maxAge: 2 * 60 * 60, // 2 hours for individual resources (increased from 30 mins)
   private: false,
   etag: true
 });
@@ -110,7 +130,7 @@ const noCache = (req, res, next) => {
  */
 const cacheStatsHeaders = (req, res, next) => {
   // Add cache stats for debugging
-  const stats = base64ResponseCache.getStats();
+  const stats = responseCache.getStats();
   res.set('X-Cache-Stats', JSON.stringify({
     hitRate: Math.round(stats.hitRate * 100) / 100,
     cachedItems: stats.cache.keys,
@@ -123,6 +143,8 @@ const cacheStatsHeaders = (req, res, next) => {
 module.exports = {
   cacheHeaders,
   base64CacheHeaders,
+  staticCacheHeaders,
+  popularCacheHeaders,
   listCacheHeaders,
   resourceCacheHeaders,
   noCache,

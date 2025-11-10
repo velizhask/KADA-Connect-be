@@ -1,12 +1,12 @@
 const { supabase } = require('../db');
-const { base64ResponseCache } = require('./base64ResponseCacheService');
+const { responseCache } = require('./responseCacheService');
 
 class CompanyService {
   async getAllCompanies(filters = {}) {
     try {
       // Check cache first for list responses
       const cacheKey = 'getAllCompanies';
-      const cachedResponse = base64ResponseCache.getAPIResponse(cacheKey, filters);
+      const cachedResponse = responseCache.getAPIResponse(cacheKey, filters);
 
       if (cachedResponse) {
         console.log('[CACHE HIT] Returning cached companies list');
@@ -55,8 +55,8 @@ class CompanyService {
         throw new Error('Failed to fetch companies');
       }
 
-      // Transform data to camelCase for API consistency
-      const transformedData = data.map(company => this.transformCompanyData(company));
+      // Transform data to camelCase for API consistency (excluding phone numbers for public API)
+      const transformedData = data.map(company => this.transformCompanyDataPublic(company));
 
       const response = {
         companies: transformedData,
@@ -69,7 +69,7 @@ class CompanyService {
       };
 
       // Cache the response
-      base64ResponseCache.setAPIResponse(cacheKey, filters, response);
+      responseCache.setAPIResponse(cacheKey, filters, response);
       console.log('[CACHE MISS] Stored companies list in cache');
 
       return response;
@@ -83,7 +83,7 @@ class CompanyService {
     try {
       // Check cache first for individual company
       const cacheKey = 'getCompanyById';
-      const cachedResponse = base64ResponseCache.getAPIResponse(cacheKey, { id });
+      const cachedResponse = responseCache.getAPIResponse(cacheKey, { id });
 
       if (cachedResponse) {
         console.log('[CACHE HIT] Returning cached company:', id);
@@ -117,10 +117,10 @@ class CompanyService {
         throw new Error('Failed to fetch company');
       }
 
-      const transformedData = this.transformCompanyData(data);
+      const transformedData = this.transformCompanyDataPublic(data);
 
       // Cache the individual company response
-      base64ResponseCache.setAPIResponse(cacheKey, { id }, transformedData);
+      responseCache.setAPIResponse(cacheKey, { id }, transformedData);
       console.log('[CACHE MISS] Stored company in cache:', id);
 
       return transformedData;
@@ -186,7 +186,7 @@ class CompanyService {
         throw new Error(`Database search failed: ${error.message}`);
       }
 
-      const transformedResults = data.map(company => this.transformCompanyData(company));
+      const transformedResults = data.map(company => this.transformCompanyDataPublic(company));
       console.log(`[DEBUG] Search for "${searchTerm}" returned ${transformedResults.length} results`);
       return transformedResults;
     } catch (error) {
@@ -521,6 +521,39 @@ class CompanyService {
     }
 
     return dbData;
+  }
+
+  /**
+   * Transform company data for public API responses (excludes phone number)
+   * @param {Object} company - Raw company data from database
+   * @returns {Object} Transformed company data without phone number
+   */
+  transformCompanyDataPublic(company) {
+    const isContactInfoVisible = company['contact_info_visible'] === 'Yes';
+
+    return {
+      id: company.id,
+      companyName: company['company_name'],
+      companySummary: company['company_summary_description'],
+      industry: company['industry_sector'],
+      website: company['company_website_link'],
+      logo: company['company_logo'],
+      techRoles: company['tech_roles_interest'],
+      preferredSkillsets: company['preferred_skillsets'],
+      contactPerson: company['contact_person_name'],
+      contactEmail: isContactInfoVisible ? company['contact_email'] : null,
+      // Phone number excluded for public API privacy
+      contactInfoVisible: isContactInfoVisible
+    };
+  }
+
+  /**
+   * Transform company list data for public API responses (excludes phone numbers)
+   * @param {Array} companies - Array of company data from database
+   * @returns {Array} Transformed company data without phone numbers
+   */
+  transformCompanyListPublic(companies) {
+    return companies.map(company => this.transformCompanyDataPublic(company));
   }
 
   transformCompanyData(company) {
