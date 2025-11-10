@@ -1,23 +1,23 @@
 /**
- * Base64 Response Cache Service
- * Handles server-side caching of base64 data responses from database queries
+ * Response Cache Service
+ * Handles server-side caching of API responses from database queries
  * to improve performance and reduce database load
  */
 
 const NodeCache = require('node-cache');
 const crypto = require('crypto');
 
-class Base64ResponseCacheService {
+class ResponseCacheService {
   constructor(options = {}) {
     // Cache version for employment status filtering changes
     this.cacheVersion = 'emp-status-v1'; // Increment when employment status logic changes
 
-    // Cache for base64 responses (2 hour TTL)
+    // Cache for API responses (1 hour TTL - optimized for memory)
     this.responseCache = new NodeCache({
-      stdTTL: 2 * 60 * 60, // 2 hours in seconds
-      checkperiod: 30 * 60, // Check for expired keys every 30 minutes
-      useClones: false, // Better performance for large base64 data
-      maxKeys: 500 // Maximum number of cached responses
+      stdTTL: 1 * 60 * 60, // 1 hour in seconds (reduced from 2 hours)
+      checkperiod: 15 * 60, // Check for expired keys every 15 minutes
+      useClones: false, // Better performance for large response data
+      maxKeys: 200 // Maximum number of cached responses (reduced from 500)
     });
 
     // Cache statistics
@@ -27,8 +27,8 @@ class Base64ResponseCacheService {
       totalCached: 0
     };
 
-    // Maximum cache size in bytes (200MB for base64 responses)
-    this.maxCacheSize = options.maxCacheSize || 200 * 1024 * 1024;
+    // Maximum cache size in bytes (50MB for API responses - optimized for free tier)
+    this.maxCacheSize = options.maxCacheSize || 50 * 1024 * 1024;
     this.currentCacheSize = 0;
 
     // Listen to cache events to track size
@@ -50,7 +50,7 @@ class Base64ResponseCacheService {
   }
 
   /**
-   * Generate cache key for base64 response
+   * Generate cache key for response data
    * Format: "student:id:profilePhoto" or "company:id:logo"
    */
   _generateResponseKey(entityType, entityId, fieldName) {
@@ -98,12 +98,15 @@ class Base64ResponseCacheService {
   }
 
   /**
-   * Store base64 response data in cache
+   * Store response data in cache
    */
-  setResponse(entityType, entityId, fieldName, base64Data) {
+  setResponse(entityType, entityId, fieldName, responseData) {
+    // Check memory pressure before caching
+    this.checkMemoryPressure();
+
     const key = this._generateResponseKey(entityType, entityId, fieldName);
     const cacheData = {
-      data: base64Data,
+      data: responseData,
       timestamp: Date.now(),
       entityType,
       entityId,
@@ -115,7 +118,7 @@ class Base64ResponseCacheService {
   }
 
   /**
-   * Get base64 response data from cache
+   * Get response data from cache
    */
   getResponse(entityType, entityId, fieldName) {
     const key = this._generateResponseKey(entityType, entityId, fieldName);
@@ -131,7 +134,7 @@ class Base64ResponseCacheService {
   }
 
   /**
-   * Store list response with base64 data in cache
+   * Store list response with data in cache
    */
   setListResponse(entityType, filters, responseData) {
     const key = this._generateListKey(entityType, filters);
@@ -174,6 +177,9 @@ class Base64ResponseCacheService {
    * Cache response with full metadata for API responses
    */
   setAPIResponse(endpointKey, params, responseData) {
+    // Check memory pressure before caching
+    this.checkMemoryPressure();
+
     const paramString = JSON.stringify(params);
     const hash = crypto.createHash('md5').update(paramString).digest('hex').substring(0, 8);
     const key = `api:${this.cacheVersion}:${endpointKey}:${hash}`;
@@ -252,6 +258,50 @@ class Base64ResponseCacheService {
   }
 
   /**
+   * Check memory pressure and clear cache if necessary
+   */
+  checkMemoryPressure() {
+    try {
+      const memoryUsage = process.memoryUsage();
+      const totalMemoryMB = memoryUsage.rss / 1024 / 1024;
+      const totalMemoryPercent = (totalMemoryMB / 512) * 100; // Free tier is 512MB
+
+      // Clear cache if memory usage is high (>80% of 512MB)
+      if (totalMemoryPercent > 80) {
+        console.log(`[MEMORY] High memory usage detected: ${totalMemoryMB.toFixed(1)}MB (${totalMemoryPercent.toFixed(1)}%). Clearing cache.`);
+        this.clearAll();
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('[MEMORY] Error checking memory pressure:', error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Get memory usage statistics
+   */
+  getMemoryStats() {
+    try {
+      const memoryUsage = process.memoryUsage();
+      const totalMemoryMB = memoryUsage.rss / 1024 / 1024;
+      const cacheMemoryMB = this.currentCacheSize / 1024 / 1024;
+
+      return {
+        total: totalMemoryMB.toFixed(1),
+        cache: cacheMemoryMB.toFixed(1),
+        cachePercent: ((cacheMemoryMB / totalMemoryMB) * 100).toFixed(1),
+        systemPercent: ((totalMemoryMB / 512) * 100).toFixed(1),
+        warning: totalMemoryMB > 400 // Warning if >400MB used
+      };
+    } catch (error) {
+      return { error: error.message };
+    }
+  }
+
+  /**
    * Destroy cache service
    */
   destroy() {
@@ -261,9 +311,9 @@ class Base64ResponseCacheService {
 }
 
 // Create singleton instance
-const base64ResponseCache = new Base64ResponseCacheService();
+const responseCache = new ResponseCacheService();
 
 module.exports = {
-  Base64ResponseCacheService,
-  base64ResponseCache
+  ResponseCacheService,
+  responseCache
 };

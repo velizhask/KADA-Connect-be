@@ -2,45 +2,49 @@ const express = require('express');
 const router = express.Router();
 const lookupController = require('../controllers/lookupController');
 const { validateSearchQuery, sanitizeInput } = require('../middlewares/validation');
+const { staticCacheHeaders, popularCacheHeaders, listCacheHeaders, cacheStatsHeaders } = require('../middlewares/cacheHeaders');
 
 // Apply sanitization middleware to all routes
 router.use(sanitizeInput);
+
+// Apply cache statistics headers to all routes
+router.use(cacheStatsHeaders);
 
 /**
  * GET /api/industries
  * Get all unique industries
  */
-router.get('/industries', lookupController.getIndustries);
+router.get('/industries', staticCacheHeaders, lookupController.getIndustries);
 
 /**
  * GET /api/tech-roles
  * Get all unique tech roles
  */
-router.get('/tech-roles', lookupController.getTechRoles);
+router.get('/tech-roles', staticCacheHeaders, lookupController.getTechRoles);
 
 /**
  * GET /api/tech-role-categories
  * Get tech role categories
  */
-router.get('/tech-role-categories', lookupController.getTechRoleCategories);
+router.get('/tech-role-categories', staticCacheHeaders, lookupController.getTechRoleCategories);
 
 /**
  * GET /api/universities
  * Get all unique universities
  */
-router.get('/universities', lookupController.getUniversities);
+router.get('/universities', staticCacheHeaders, lookupController.getUniversities);
 
 /**
  * GET /api/majors
  * Get all unique majors
  */
-router.get('/majors', lookupController.getMajors);
+router.get('/majors', staticCacheHeaders, lookupController.getMajors);
 
 /**
  * GET /api/preferred-industries
  * Get all unique preferred industries
  */
-router.get('/preferred-industries', lookupController.getPreferredIndustries);
+router.get('/preferred-industries', staticCacheHeaders, lookupController.getPreferredIndustries);
 
 /**
  * GET /api/tech-roles/category/:category
@@ -100,37 +104,37 @@ router.get('/lookup/all', lookupController.getAllLookupData);
  * GET /api/popular/industries
  * Get most popular industries by count
  */
-router.get('/popular/industries', lookupController.getPopularIndustries);
+router.get('/popular/industries', popularCacheHeaders, lookupController.getPopularIndustries);
 
 /**
  * GET /api/popular/tech-roles
  * Get most popular tech roles by count
  */
-router.get('/popular/tech-roles', lookupController.getPopularTechRoles);
+router.get('/popular/tech-roles', popularCacheHeaders, lookupController.getPopularTechRoles);
 
 /**
  * GET /api/popular/tech-skills
  * Get most popular tech skills by count
  */
-router.get('/popular/tech-skills', lookupController.getPopularTechSkills);
+router.get('/popular/tech-skills', popularCacheHeaders, lookupController.getPopularTechSkills);
 
 /**
  * GET /api/popular/universities
  * Get most popular universities by count
  */
-router.get('/popular/universities', lookupController.getPopularUniversities);
+router.get('/popular/universities', popularCacheHeaders, lookupController.getPopularUniversities);
 
 /**
  * GET /api/popular/majors
  * Get most popular majors by count
  */
-router.get('/popular/majors', lookupController.getPopularMajors);
+router.get('/popular/majors', popularCacheHeaders, lookupController.getPopularMajors);
 
 /**
  * GET /api/popular/preferred-industries
  * Get most popular preferred industries by count
  */
-router.get('/popular/preferred-industries', lookupController.getPopularPreferredIndustries);
+router.get('/popular/preferred-industries', popularCacheHeaders, lookupController.getPopularPreferredIndustries);
 
 /**
  * POST /api/cache/clear

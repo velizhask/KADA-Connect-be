@@ -1,5 +1,5 @@
 const { supabase } = require('../db');
-const { base64ResponseCache } = require('./base64ResponseCacheService');
+const { responseCache } = require('./responseCacheService');
 
 class StudentService {
   async getAllStudents(filters = {}) {
@@ -12,7 +12,7 @@ class StudentService {
 
       // Check cache first for list responses
       const cacheKey = 'getAllStudents';
-      const cachedResponse = base64ResponseCache.getAPIResponse(cacheKey, cacheFilters);
+      const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheFilters);
 
       if (cachedResponse) {
         console.log('[CACHE HIT] Returning cached students list');
@@ -93,7 +93,7 @@ class StudentService {
       };
 
       // Cache the response
-      base64ResponseCache.setAPIResponse(cacheKey, cacheFilters, response);
+      responseCache.setAPIResponse(cacheKey, cacheFilters, response);
       console.log('[CACHE MISS] Stored students list in cache');
 
       return response;
@@ -111,7 +111,7 @@ class StudentService {
         id,
         employmentStatus: 'Open to work' // Include employment status in cache key
       };
-      const cachedResponse = base64ResponseCache.getAPIResponse(cacheKey, cacheParams);
+      const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheParams);
 
       if (cachedResponse) {
         console.log('[CACHE HIT] Returning cached student:', id);
@@ -156,7 +156,7 @@ class StudentService {
       const transformedData = this.transformStudentData(data);
 
       // Cache the individual student response
-      base64ResponseCache.setAPIResponse(cacheKey, cacheParams, transformedData);
+      responseCache.setAPIResponse(cacheKey, cacheParams, transformedData);
       console.log('[CACHE MISS] Stored student in cache:', id);
 
       return transformedData;
@@ -490,7 +490,7 @@ class StudentService {
 
       // Clear cache for new student (especially if employment status affects visibility)
       console.log('[CACHE] Clearing student cache due to new student creation');
-      base64ResponseCache.clearAll();
+      responseCache.clearAll();
 
       const transformedData = this.transformStudentData(data);
       return transformedData;
@@ -541,7 +541,7 @@ class StudentService {
       // Clear cache if employment status was updated
       if (updateData.employmentStatus || dbData['employment_status']) {
         console.log('[CACHE] Clearing student cache due to employment status update');
-        base64ResponseCache.clearAll();
+        responseCache.clearAll();
       }
 
       const transformedData = this.transformStudentData(data);
@@ -598,7 +598,7 @@ class StudentService {
       // Clear cache if employment status was updated
       if (patchData.employmentStatus || dbData['employment_status']) {
         console.log('[CACHE] Clearing student cache due to employment status update');
-        base64ResponseCache.clearAll();
+        responseCache.clearAll();
       }
 
       const transformedData = this.transformStudentData(data);
@@ -630,7 +630,7 @@ class StudentService {
 
       // Clear cache for deleted student
       console.log('[CACHE] Clearing student cache due to student deletion');
-      base64ResponseCache.clearAll();
+      responseCache.clearAll();
 
       return {
         id: data.id,

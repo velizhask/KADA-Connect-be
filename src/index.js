@@ -70,7 +70,6 @@ app.get('/health', (req, res) => {
 const companyRoutes = require('./routes/companies');
 const studentRoutes = require('./routes/students');
 const lookupRoutes = require('./routes/lookup');
-const proxyRoutes = require('./routes/proxy');
 
 // Import middleware
 const { errorHandler, notFoundHandler } = require('./middlewares/error-handler');
@@ -160,7 +159,6 @@ app.get('/api/docs', (req, res) => {
 app.use('/api/companies', companyRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api', lookupRoutes);
-app.use('/api/proxy', proxyRoutes);
 
 // 404 handler
 app.use(notFoundHandler);

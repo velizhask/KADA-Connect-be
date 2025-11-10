@@ -1,12 +1,12 @@
 const { supabase } = require('../db');
-const { base64ResponseCache } = require('./base64ResponseCacheService');
+const { responseCache } = require('./responseCacheService');
 
 class CompanyService {
   async getAllCompanies(filters = {}) {
     try {
       // Check cache first for list responses
       const cacheKey = 'getAllCompanies';
-      const cachedResponse = base64ResponseCache.getAPIResponse(cacheKey, filters);
+      const cachedResponse = responseCache.getAPIResponse(cacheKey, filters);
 
       if (cachedResponse) {
         console.log('[CACHE HIT] Returning cached companies list');
@@ -69,7 +69,7 @@ class CompanyService {
       };
 
       // Cache the response
-      base64ResponseCache.setAPIResponse(cacheKey, filters, response);
+      responseCache.setAPIResponse(cacheKey, filters, response);
       console.log('[CACHE MISS] Stored companies list in cache');
 
       return response;
@@ -83,7 +83,7 @@ class CompanyService {
     try {
       // Check cache first for individual company
       const cacheKey = 'getCompanyById';
-      const cachedResponse = base64ResponseCache.getAPIResponse(cacheKey, { id });
+      const cachedResponse = responseCache.getAPIResponse(cacheKey, { id });
 
       if (cachedResponse) {
         console.log('[CACHE HIT] Returning cached company:', id);
@@ -120,7 +120,7 @@ class CompanyService {
       const transformedData = this.transformCompanyData(data);
 
       // Cache the individual company response
-      base64ResponseCache.setAPIResponse(cacheKey, { id }, transformedData);
+      responseCache.setAPIResponse(cacheKey, { id }, transformedData);
       console.log('[CACHE MISS] Stored company in cache:', id);
 
       return transformedData;

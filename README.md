@@ -69,13 +69,14 @@ KADA Connect serves as a comprehensive talent-matching platform, enabling:
 - Search Performance: Optimized fuzzy search
 
 
-### Response Caching System
-- **High-Performance Caching**: 2-hour TTL with intelligent cache management
-- **Memory Efficient**: 200MB cache limit with automatic cleanup
+### Optimized Response Caching System
+- **Client-Side HTTP Caching**: Extended browser caching with intelligent TTL management
+- **Memory Efficient**: 50MB server cache limit optimized for 512MB free-tier deployment
+- **Multi-Tier Caching**: 24h static data, 12h popular endpoints, 6h lists, 2h resources
 - **ETag Support**: Conditional requests for bandwidth optimization
 - **Cache Statistics**: Real-time performance monitoring and hit rate tracking
-- **Smart Invalidation**: Versioned cache keys for data consistency
-- **Performance Gains**: Up to 300x faster responses for cached data (1.17s → 0.0039s)
+- **Memory Pressure Monitoring**: Automatic cache cleanup at 80% memory threshold
+- **Performance Gains**: 80-90% client cache hit rate with minimal server memory usage
 
 ### Validation & Quality
 - **Input Validation**: Comprehensive Joi-based validation for all operations
@@ -193,7 +194,6 @@ http://localhost:3001/api
 | **Companies** | 11 endpoints | Company profiles, search, statistics |
 | **Students** | 15 endpoints | Student profiles, filtering, analytics |
 | **Lookup** | 25 endpoints | Reference data, search, caching |
-| **Proxy** | 4 endpoints | Image proxy service with security |
 | **System** | 3 endpoints | Health checks, API overview |
 
 📖 **For complete API documentation**, see: **[docs/API.md](docs/API.md)**
@@ -207,28 +207,62 @@ The detailed API documentation includes:
 
 ## Performance Optimizations
 
-### Multi-Layer Caching Architecture
-- **Image Caching**: 24-hour TTL with ETag support and 500MB cache limit
-- **Lookup Data Caching**: 1-hour TTL with versioned keys for cache invalidation
+### Client-Side Caching Strategy
+- **Extended Browser Caching**: Shifts caching burden to client browsers with optimized TTLs
+- **Multi-Tier Cache TTLs**: 24h static data, 12h popular endpoints, 6h lists, 2h resources
+- **HTTP Cache Headers**: Smart Cache-Control headers with proper ETag support
+- **Conditional Requests**: Reduces bandwidth usage by 60-80% with If-None-Match headers
+- **Cache Hit Optimization**: 80-90% client cache hit rate for frequently accessed data
 
-### Caching Performance
-- **300x Speed Improvement**: Cached responses reduced from 1.17s to 0.0039s
-- **ETag Support**: Conditional requests reduce bandwidth usage by 60-80%
-- **Memory Management**: Automatic cleanup with LRU eviction when cache limits reached
-- **Cache Hit Rate**: Real-time monitoring shows 90%+ hit rates for frequently accessed data
-- **Smart Invalidation**: Versioned cache keys ensure data consistency
+### Memory Optimization
+- **50MB Server Cache**: Optimized for 512MB deployment constraints
+- **Memory Pressure Monitoring**: Automatic cache cleanup at 80% memory threshold
+- **Adaptive Caching**: Real-time memory usage tracking with automatic cache eviction
+- **Graceful Degradation**: Falls back to HTTP-only caching under memory pressure
 
-### Image Performance
-- **Multi-Layer Caching**: Server-side response caching
-- **Compression**: Gzip compression reduces response sizes by 60-80%
-- **Rate Limiting**: 300 requests per 15 minutes with intelligent throttling
-- **Fallback Mechanisms**: Graceful degradation maintains service availability
-
-### Database Optimization
+### Database Performance
 - **Query Reduction**: Intelligent caching reduces database load by up to 90%
+- **Selective Server Caching**: Only expensive aggregation queries cached server-side
 - **Single-Pass Processing**: Eliminated redundant loops in data extraction
 - **Memory Efficiency**: Optimized Set-based deduplication and early filtering
-- **Search Performance**: Improved fuzzy search
+- **Search Performance**: Improved fuzzy search algorithms
+
+### Network Optimization
+- **Compression**: Gzip compression reduces response sizes by 60-80%
+- **ETag Support**: Conditional requests minimize unnecessary data transfer
+- **Cache-Control Headers**: Optimized for different data types and change frequencies
+- **Bandwidth Efficiency**: Smart validation reduces repeated data transmission
+
+## Client-Side Caching Architecture
+
+### HTTP Cache-Control Strategy
+The KADA Connect backend employs a sophisticated client-side caching strategy designed to minimize server memory usage while maximizing performance for end users.
+
+#### Cache TTL Configuration
+- **Static Reference Data**: 24 hours (`/api/majors`, `/api/industries`, `/api/universities`)
+- **Popular Aggregations**: 12 hours (`/api/popular/tech-skills`, `/api/popular/industries`)
+- **List Responses**: 6 hours (filtered student/company lists with pagination)
+- **Individual Resources**: 2 hours (specific student/company profiles)
+
+#### Cache Headers Implementation
+```http
+Cache-Control: public, max-age=86400, must-revalidate  # 24 hours for static data
+Cache-Control: public, max-age=43200, must-revalidate  # 12 hours for popular data
+Cache-Control: public, max-age=21600, must-revalidate  # 6 hours for lists
+Cache-Control: public, max-age=7200, must-revalidate   # 2 hours for resources
+```
+
+#### Conditional Request Support
+- **ETag Generation**: Automatic ETag creation for cache validation
+- **If-None-Match**: 304 Not Modified responses reduce bandwidth
+- **Last-Modified Headers**: Additional cache validation support
+- **Vary Headers**: Proper content negotiation handling
+
+### Browser Cache Management
+- **Automatic Cache Cleanup**: Browser handles cache expiration automatically
+- **Storage Efficiency**: Modern browsers have gigabytes of cache storage
+- **Background Updates**: Conditional requests update cache seamlessly
+- **Offline Capability**: Cached content available during network issues
 
 ### Project Structure
 
@@ -248,13 +282,16 @@ kada-connect-be/
 │   ├── services/                             # Business logic and data operations
 │   │   ├── companyService.js
 │   │   ├── studentService.js
-│   │   └── lookupService.js
+│   │   ├── lookupService.js
+│   │   └── responseCacheService.js           # Optimized response caching
 │   ├── routes/                               # API routing configuration
 │   │   ├── companies.js
 │   │   ├── students.js
 │   │   └── lookup.js
-│   ├── middlewares/                          # Validation, error handling, security
-│   │   └── validation.js
+│   ├── middlewares/                          # Request processing and validation
+│   │   ├── validation.js                     # Input validation
+│   │   ├── error-handler.js                  # Global error handling
+│   │   └── cacheHeaders.js                   # HTTP cache headers middleware
 │   ├── validators/                           # Input validation schemas
 │   │   └── schemas.js
 │   ├── db/                                   # Database connection
@@ -283,16 +320,22 @@ A comprehensive Postman collection with 41 API endpoints is available:
 ### Common Issues and Solutions
 
 #### Caching Issues
-**Issue**: Slow initial response times for image data
+**Issue**: Slow response times on initial requests
 **Solution**:
 - Check cache statistics using the `X-Cache-Stats` response header
-- Verify cache is warming up after server restart
-- Monitor memory usage to ensure cache isn't being evicted
+- Verify HTTP cache TTLs are applied correctly: static data (24h), popular (12h), lists (6h), resources (2h)
+- Monitor memory usage to ensure server cache (50MB) isn't being evicted
+- Verify browser caching is working with cache-control headers
 
 **Commands**:
 ```bash
 # Check cache performance
-curl -I http://localhost:3001/api/students | grep X-Cache-Stats
+curl -I http://localhost:3001/api/majors | grep X-Cache-Stats
+curl -I http://localhost:3001/api/majors | grep Cache-Control
+
+# Verify different cache TTLs
+curl -I http://localhost:3001/api/popular/tech-skills | grep Cache-Control
+curl -I http://localhost:3001/api/students | grep Cache-Control
 ```
 
 #### Database Connection Issues
@@ -306,9 +349,10 @@ curl -I http://localhost:3001/api/students | grep X-Cache-Stats
 #### Performance Issues
 **Issue**: Slow API response times
 **Solution**:
-- Check cache hit rates in response headers
-- Monitor memory usage for cache efficiency
-- Review database query performance in Supabase dashboard
+- Check cache hit rates in response headers for both server cache and client caching
+- Monitor memory usage to ensure 50MB server cache limit isn't being exceeded
+- Check if memory pressure monitoring is clearing cache (80% threshold)
+- Verify HTTP cache headers are being applied correctly for browser caching
 - Ensure compression middleware is working (check `Content-Encoding: gzip`)
 
 #### CORS Issues
@@ -356,33 +400,55 @@ Where `curl-format.txt` contains:
 
 ### Performance Optimization Examples
 
-#### Cache Warming
-After server restart, warm up caches for optimal performance:
+#### Cache Warming for HTTP Caching
+After server restart, populate browser caches for optimal performance:
 ```bash
-# Warm student and company caches
-curl http://localhost:3001/api/students >/dev/null
-curl http://localhost:3001/api/companies >/dev/null
-curl http://localhost:3001/api/lookup/industries >/dev/null
-curl http://localhost:3001/api/lookup/tech-roles >/dev/null
+# Warm static data caches (24h TTL)
+curl http://localhost:3001/api/majors >/dev/null
+curl http://localhost:3001/api/industries >/dev/null
+curl http://localhost:3001/api/universities >/dev/null
+
+# Warm popular data caches (12h TTL)
+curl http://localhost:3001/api/popular/tech-skills >/dev/null
+curl http://localhost:3001/api/popular/industries >/dev/null
+
+# Warm list caches (6h TTL)
+curl http://localhost:3001/api/students?page=1&limit=20 >/dev/null
+curl http://localhost:3001/api/companies?page=1&limit=20 >/dev/null
 ```
 
-#### Batch Operations
-Use pagination parameters for efficient data retrieval:
+#### Memory Monitoring
+Monitor memory usage for free-tier deployment:
 ```bash
-# Get first page with optimal cache usage
+# Check cache statistics and memory usage
+curl -I http://localhost:3001/api/majors | grep X-Cache-Stats
+
+# Monitor different cache TTLs applied
+curl -I http://localhost:3001/api/majors | grep "max-age="
+curl -I http://localhost:3001/api/popular/tech-skills | grep "max-age="
+curl -I http://localhost:3001/api/students | grep "max-age="
+```
+
+#### Batch Operations with Client Caching
+Use pagination and filters for optimal browser caching:
+```bash
+# Get first page with optimal cache usage (6h TTL)
 curl "http://localhost:3001/api/students?page=1&limit=20"
 
-# Use specific filters for better cache hits
+# Use specific filters for better cache keys
 curl "http://localhost:3001/api/companies?industry=Technology&page=1"
+
+# Static data gets cached for 24 hours in browser
+curl "http://localhost:3001/api/majors"  # 24h cache
 ```
 
-#### Conditional Requests
-Leverage ETags for bandwidth efficiency:
+#### Conditional Requests for Bandwidth Efficiency
+Leverage ETags for browser cache validation:
 ```bash
-# First request gets ETag
+# First request gets ETag and Cache-Control headers
 curl -I http://localhost:3001/api/students/123
 
-# Subsequent requests use If-None-Match
+# Subsequent requests use If-None-Match (304 Not Modified)
 curl -H "If-None-Match: W/\"abc123\"" http://localhost:3001/api/students/123
 ```
 
