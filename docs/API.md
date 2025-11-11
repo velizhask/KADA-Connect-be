@@ -1517,6 +1517,100 @@ curl -X POST http://localhost:3001/api/cache/clear \
 
 ---
 
+## Real-time Cache Invalidation
+
+The API implements intelligent cache invalidation based on database change detection:
+
+### Cache Invalidation Mechanism
+
+- **Database Event Detection**: Automatic detection of data changes via Supabase Realtime
+- **Column-Specific Detection**: Monitors changes to specific columns (name, status, etc.)
+- **Targeted Invalidation**: Only clears cache entries affected by data changes
+- **DELETE Handling**: Comprehensive cache clearing for deleted records
+- **UPDATE Handling**: Granular cache invalidation based on changed fields
+- **Multi-Table Support**: Handles changes across students, companies, and lookup tables
+
+### Real-time Event Processing
+
+The system monitors database changes and automatically invalidates relevant cache entries:
+
+**Student Table Changes**:
+- Monitored Columns: 16 critical columns including `full_name`, `status`, `university_institution`, `tech_stack_skills`, `employment_status`
+- Affected Endpoints: Student lists, university data, major data, tech skills, search results
+
+**Company Table Changes**:
+- Monitored Columns: 6 critical columns including `company_name`, `industry_sector`, `tech_roles_interest`, `contact_info_visible`
+- Affected Endpoints: Company lists, industry data, tech roles, search results
+
+### Real-time Log Patterns
+
+**UPDATE Events**:
+```
+[REALTIME] Student UPDATE: { id: 123, hasStatusChange: false, changedColumns: ['full_name', 'tech_stack_skills'] }
+[REALTIME] Company UPDATE: { id: 456, hasVisibilityChange: false, changedColumns: ['company_name'] }
+```
+
+**DELETE Events**:
+```
+[REALTIME] Student DELETE detected: { id: 123, name: "Student Name" }
+[REALTIME] Student DELETE cache invalidation completed for ID: 123
+[REALTIME] Company DELETE detected: { id: 456, name: "Company Name" }
+[REALTIME] Company DELETE cache invalidation completed for ID: 456
+```
+
+**Targeted Invalidation**:
+```
+[REALTIME] Targeted cache invalidation for students: 3 patterns
+[REALTIME] Targeted cache invalidation for companies: 2 patterns
+```
+
+### Cache Invalidation Response Headers
+
+Real-time cache operations may affect response headers:
+- `X-Cache-Realtime`: Indicates if data is synchronized with real-time database changes
+- `X-Subscription-Status`: Shows realtime subscription health
+- `X-Last-Change`: Timestamp of most recent database change detection
+
+### Error Handling
+
+**Real-time Service Errors**:
+```json
+{
+  "success": false,
+  "message": "Realtime service unavailable",
+  "data": null,
+  "error": {
+    "code": "REALTIME_UNAVAILABLE",
+    "subscriptions": 0,
+    "reconnectAttempts": 5
+  }
+}
+```
+
+**Recovery**: Service automatically attempts reconnection with exponential backoff.
+
+### Monitoring Real-time Performance
+
+**Health Check**:
+```bash
+curl http://localhost:3001/health/realtime
+```
+
+**Expected Response**:
+```json
+{
+  "status": "OK",
+  "realtime": {
+    "isConnected": true,
+    "subscriptionsCount": 2,
+    "reconnectAttempts": 0,
+    "subscriptions": ["students", "companies"]
+  }
+}
+```
+
+---
+
 ## POST /api/validate/tech-skills
 **Description**: Validate array of tech skills against known skills database.
 
@@ -1581,6 +1675,51 @@ curl http://localhost:3001/health
 ```
 
 **Notes**: Designed for load balancers and monitoring systems. Returns HTTP 200 for healthy status.
+
+---
+
+## GET /health/realtime
+**Description**: Get real-time database change detection service status.
+
+**Return Value**: Real-time service status object
+
+**Example**:
+```bash
+curl http://localhost:3001/health/realtime
+```
+
+**Response**:
+```json
+{
+  "status": "OK",
+  "realtime": {
+    "isConnected": true,
+    "subscriptionsCount": 2,
+    "reconnectAttempts": 0,
+    "subscriptions": ["students", "companies"]
+  },
+  "message": "Realtime database change detection is active",
+  "timestamp": "2025-11-11T03:40:35.736Z",
+  "version": "1.0.0"
+}
+```
+
+**Response Fields**:
+- `realtime.isConnected`: Boolean indicating if realtime service is connected
+- `realtime.subscriptionsCount`: Number of active database subscriptions
+- `realtime.reconnectAttempts`: Number of reconnection attempts made
+- `realtime.subscriptions`: Array of subscribed table names
+- `status`: Overall health status
+- `message`: Descriptive status message
+- `timestamp`: ISO timestamp of status check
+- `version`: API version
+
+**Notes**: Monitors Supabase realtime subscription health and connection status. Returns HTTP 200 for healthy status, appropriate error codes for service issues.
+
+**Status Codes**:
+- `200 OK`: Realtime service is healthy and connected
+- `503 Service Unavailable`: Realtime service is not responding
+- `500 Internal Server Error`: Service encountered an error
 
 ---
 

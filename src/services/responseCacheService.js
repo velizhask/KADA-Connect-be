@@ -241,12 +241,146 @@ class ResponseCacheService {
    * Clear all caches
    */
   clearAll() {
+    const statsBefore = this.getStats();
     this.responseCache.flushAll();
     this.currentCacheSize = 0;
     this.stats = {
       hits: 0,
       misses: 0,
       totalCached: 0
+    };
+
+    }
+
+  /**
+   * Clear cache for specific table/entity type
+   * @param {string} tableType - 'students', 'companies', or 'lookup'
+   * @param {string} recordId - Optional specific record ID
+   * @param {Array} specificPatterns - Optional specific patterns to clear
+   */
+  clearByTable(tableType, recordId = null, specificPatterns = null) {
+    const keys = this.responseCache.keys();
+    let clearedCount = 0;
+
+    // Define comprehensive patterns for different table types
+    const patterns = {
+      students: [
+        'api:privacy-v2:getAllStudents:',
+        'api:privacy-v2:getStudentById:',
+        'api:privacy-v2:searchStudents:',
+        'api:privacy-v2:getStudentsByStatus:',
+        'api:privacy-v2:getStudentsStats:',
+        'api:privacy-v2:getFeaturedStudents:'
+      ],
+      companies: [
+        'api:privacy-v2:getAllCompanies:',
+        'api:privacy-v2:getCompanyById:',
+        'api:privacy-v2:searchCompanies:',
+        'api:privacy-v2:getCompanyStats:',
+        'api:privacy-v2:getIndustries:', 
+        'api:privacy-v2:getTechRoles:'  
+      ],
+      lookup: [
+        'api:privacy-v2:getAllLookupData:',
+        'api:privacy-v2:getIndustries:',
+        'api:privacy-v2:getTechRoles:',
+        'api:privacy-v2:getTechSkills:',
+        'api:privacy-v2:getUniversities:',
+        'api:privacy-v2:getMajors:',
+        'api:privacy-v2:getPreferredIndustries:',
+        'api:privacy-v2:getPopularIndustries:',
+        'api:privacy-v2:getPopularTechRoles:',
+        'api:privacy-v2:getPopularTechSkills:',
+        'api:privacy-v2:getPopularUniversities:',
+        'api:privacy-v2:getPopularMajors:',
+        'api:privacy-v2:getPopularPreferredIndustries:'
+      ]
+    };
+
+    const targetPatterns = specificPatterns || patterns[tableType] || [];
+
+    for (const key of keys) {
+      const shouldClear = targetPatterns.some(pattern => key.includes(pattern)) ||
+                         (recordId && key.includes(`:${recordId}`));
+
+      if (shouldClear) {
+        this.responseCache.del(key);
+        clearedCount++;
+      }
+    }
+
+    return clearedCount;
+  }
+
+  /**
+   * Clear cache for employment status changes (affects multiple tables)
+   * @param {string} reason - Reason for the clear
+   */
+  clearEmploymentStatusCache(reason = 'Employment status change') {
+    // Employment status changes affect students and all lookup data
+    const studentsCleared = this.clearByTable('students');
+    const lookupCleared = this.clearByTable('lookup');
+
+    return studentsCleared + lookupCleared;
+  }
+
+  /**
+   * Clear cache for visibility changes (companies)
+   * @param {string} reason - Reason for the clear
+   */
+  clearVisibilityCache(reason = 'Visibility change') {
+    const companiesCleared = this.clearByTable('companies');
+
+    return companiesCleared;
+  }
+
+  /**
+   * Format bytes for human-readable output
+   * @param {number} bytes - Bytes to format
+   * @returns {string} Formatted string
+   */
+  formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  /**
+   * Get detailed cache statistics with breakdown
+   */
+  getDetailedStats() {
+    const basicStats = this.getStats();
+    const keys = this.responseCache.keys();
+
+    // Count entries by type
+    const entryTypes = {
+      students: 0,
+      companies: 0,
+      lookup: 0,
+      other: 0
+    };
+
+    keys.forEach(key => {
+      if (key.includes('Student') || key.includes('students')) {
+        entryTypes.students++;
+      } else if (key.includes('Company') || key.includes('companies')) {
+        entryTypes.companies++;
+      } else if (key.includes('Universities') || key.includes('Majors') ||
+                 key.includes('Industries') || key.includes('Skills') ||
+                 key.includes('getTechRoles') || key.includes('getCompanyIndustries')) {
+        entryTypes.lookup++;
+      } else {
+        entryTypes.other++;
+      }
+    });
+
+    return {
+      ...basicStats,
+      entryBreakdown: entryTypes,
+      totalKeys: keys.length,
+      version: this.cacheVersion
     };
   }
 
@@ -268,7 +402,6 @@ class ResponseCacheService {
 
       // Clear cache if memory usage is high (>80% of 512MB)
       if (totalMemoryPercent > 80) {
-        console.log(`[MEMORY] High memory usage detected: ${totalMemoryMB.toFixed(1)}MB (${totalMemoryPercent.toFixed(1)}%). Clearing cache.`);
         this.clearAll();
         return true;
       }

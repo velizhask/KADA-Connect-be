@@ -15,7 +15,6 @@ class StudentService {
       const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheFilters);
 
       if (cachedResponse) {
-        console.log('[CACHE HIT] Returning cached students list');
         return cachedResponse.data;
       }
 
@@ -79,7 +78,7 @@ class StudentService {
         throw new Error('Failed to fetch students');
       }
 
-      // Transform data to camelCase for API consistency (excluding phone numbers for public API)
+      // Transform data to camelCase for API consistency
       const transformedData = data.map(student => this.transformStudentDataPublic(student));
 
       const response = {
@@ -94,7 +93,6 @@ class StudentService {
 
       // Cache the response
       responseCache.setAPIResponse(cacheKey, cacheFilters, response);
-      console.log('[CACHE MISS] Stored students list in cache');
 
       return response;
     } catch (error) {
@@ -114,7 +112,6 @@ class StudentService {
       const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheParams);
 
       if (cachedResponse) {
-        console.log('[CACHE HIT] Returning cached student:', id);
         return cachedResponse.data;
       }
 
@@ -157,7 +154,6 @@ class StudentService {
 
       // Cache the individual student response
       responseCache.setAPIResponse(cacheKey, cacheParams, transformedData);
-      console.log('[CACHE MISS] Stored student in cache:', id);
 
       return transformedData;
     } catch (error) {
@@ -172,7 +168,6 @@ class StudentService {
       const searchTerms = searchTerm.split(/\s+/).filter(term => term.length > 0);
 
       if (searchTerms.length === 0) {
-        console.log(`[DEBUG] No valid search terms found, returning empty array`);
         return [];
       }
 
@@ -486,11 +481,10 @@ class StudentService {
         throw new Error(`Failed to create student: ${error.message}`);
       }
 
-      console.log('[SUCCESS] Student created successfully with ID:', data.id);
+      // console.log('[SUCCESS] Student created successfully with ID:', data.id);
 
       // Clear cache for new student (especially if employment status affects visibility)
-      console.log('[CACHE] Clearing student cache due to new student creation');
-      responseCache.clearAll();
+      responseCache.clearEmploymentStatusCache('New student creation');
 
       const transformedData = this.transformStudentData(data);
       return transformedData;
@@ -536,12 +530,14 @@ class StudentService {
         throw new Error(`Failed to update student: ${error.message}`);
       }
 
-      console.log('[SUCCESS] Student updated successfully with ID:', data.id);
+      // console.log('[SUCCESS] Student updated successfully with ID:', data.id);
 
       // Clear cache if employment status was updated
       if (updateData.employmentStatus || dbData['employment_status']) {
-        console.log('[CACHE] Clearing student cache due to employment status update');
-        responseCache.clearAll();
+        responseCache.clearEmploymentStatusCache('Student employment status update');
+      } else {
+        // For non-employment status updates, clear only student cache
+        responseCache.clearByTable('students', id);
       }
 
       const transformedData = this.transformStudentData(data);
@@ -593,12 +589,14 @@ class StudentService {
         throw new Error(`Failed to patch student: ${error.message}`);
       }
 
-      console.log('[SUCCESS] Student patched successfully with ID:', data.id);
+      // console.log('[SUCCESS] Student patched successfully with ID:', data.id);
 
       // Clear cache if employment status was updated
       if (patchData.employmentStatus || dbData['employment_status']) {
-        console.log('[CACHE] Clearing student cache due to employment status update');
-        responseCache.clearAll();
+        responseCache.clearEmploymentStatusCache('Student employment status patch');
+      } else {
+        // For non-employment status patches, clear only student cache
+        responseCache.clearByTable('students', id);
       }
 
       const transformedData = this.transformStudentData(data);
@@ -626,11 +624,10 @@ class StudentService {
         throw new Error(`Failed to delete student: ${error.message}`);
       }
 
-      console.log('[SUCCESS] Student deleted successfully with ID:', data.id);
+      // console.log('[SUCCESS] Student deleted successfully with ID:', data.id);
 
       // Clear cache for deleted student
-      console.log('[CACHE] Clearing student cache due to student deletion');
-      responseCache.clearAll();
+      responseCache.clearEmploymentStatusCache('Student deletion');
 
       return {
         id: data.id,

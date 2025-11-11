@@ -9,6 +9,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const { testConnection } = require('./db');
+const { realtimeService } = require('./services/realtimeService');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -61,6 +62,21 @@ app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
     message: 'KADA Connect Backend is running',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
+});
+
+// Realtime status endpoint
+app.get('/health/realtime', (req, res) => {
+  const realtimeStatus = realtimeService.getStatus();
+
+  res.status(200).json({
+    status: realtimeStatus.isConnected ? 'OK' : 'ERROR',
+    realtime: realtimeStatus,
+    message: realtimeStatus.isConnected ?
+      'Realtime database change detection is active' :
+      'Realtime database change detection is not active',
     timestamp: new Date().toISOString(),
     version: '1.0.0'
   });
@@ -171,17 +187,17 @@ const startServer = async () => {
   try {
     // Test database connection
     const dbConnected = await testConnection();
-    if (!dbConnected) {
-      console.log('[WARNING] Starting server without database connection');
+
+    // Initialize realtime subscriptions for database change detection
+    try {
+      await realtimeService.initialize();
+    } catch (realtimeError) {
+      console.error('[ERROR] Failed to initialize realtime subscriptions:', realtimeError.message);
     }
 
     // Start Express server
     await new Promise((resolve, reject) => {
       const server = app.listen(PORT, () => {
-        console.log(`[SUCCESS] KADA Connect Backend running on port ${PORT}`);
-        console.log(`[INFO] Environment: ${process.env.NODE_ENV || 'development'}`);
-        console.log(`[INFO] Health check: http://localhost:${PORT}/health`);
-        console.log(`[INFO] API endpoints: http://localhost:${PORT}/api`);
         resolve();
       });
 
@@ -197,13 +213,25 @@ const startServer = async () => {
 };
 
 // Handle graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('[INFO] SIGTERM received, shutting down gracefully');
+process.on('SIGTERM', async () => {
+  // Cleanup realtime subscriptions
+  try {
+    await realtimeService.cleanup();
+  } catch (error) {
+    console.error('[CLEANUP] Error cleaning up realtime subscriptions:', error.message);
+  }
+
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
-  console.log('[INFO] SIGINT received, shutting down gracefully');
+process.on('SIGINT', async () => {
+  // Cleanup realtime subscriptions
+  try {
+    await realtimeService.cleanup();
+  } catch (error) {
+    console.error('[CLEANUP] Error cleaning up realtime subscriptions:', error.message);
+  }
+
   process.exit(0);
 });
 

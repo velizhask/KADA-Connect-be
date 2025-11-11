@@ -9,7 +9,6 @@ class CompanyService {
       const cachedResponse = responseCache.getAPIResponse(cacheKey, filters);
 
       if (cachedResponse) {
-        console.log('[CACHE HIT] Returning cached companies list');
         return cachedResponse.data;
       }
 
@@ -70,7 +69,6 @@ class CompanyService {
 
       // Cache the response
       responseCache.setAPIResponse(cacheKey, filters, response);
-      console.log('[CACHE MISS] Stored companies list in cache');
 
       return response;
     } catch (error) {
@@ -86,7 +84,6 @@ class CompanyService {
       const cachedResponse = responseCache.getAPIResponse(cacheKey, { id });
 
       if (cachedResponse) {
-        console.log('[CACHE HIT] Returning cached company:', id);
         return cachedResponse.data;
       }
 
@@ -121,7 +118,6 @@ class CompanyService {
 
       // Cache the individual company response
       responseCache.setAPIResponse(cacheKey, { id }, transformedData);
-      console.log('[CACHE MISS] Stored company in cache:', id);
 
       return transformedData;
     } catch (error) {
@@ -187,7 +183,7 @@ class CompanyService {
       }
 
       const transformedResults = data.map(company => this.transformCompanyDataPublic(company));
-      console.log(`[DEBUG] Search for "${searchTerm}" returned ${transformedResults.length} results`);
+      // console.log(`[DEBUG] Search for "${searchTerm}" returned ${transformedResults.length} results`);
       return transformedResults;
     } catch (error) {
       console.error('[ERROR] CompanyService.searchCompanies:', error.message);
@@ -309,7 +305,11 @@ class CompanyService {
         throw new Error(`Failed to create company: ${error.message}`);
       }
 
-      console.log('[SUCCESS] Company created successfully with ID:', data.id);
+      // console.log('[SUCCESS] Company created successfully with ID:', data.id);
+
+      // Clear cache to ensure new company appears immediately
+      responseCache.clearByTable('companies');
+
       const transformedData = this.transformCompanyData(data);
       return transformedData;
     } catch (error) {
@@ -324,7 +324,7 @@ class CompanyService {
       const dbData = this.transformCompanyDataForDB(updateData);
 
       // Debug: Log the data being sent to Supabase
-      console.log('[DEBUG] updateCompany data:', { id, dbData });
+      // console.log('[DEBUG] updateCompany data:', { id, dbData });
 
       const { data, error } = await supabase
         .from('companies')
@@ -355,7 +355,11 @@ class CompanyService {
         throw new Error(`Failed to update company: ${error.message}`);
       }
 
-      console.log('[SUCCESS] Company updated successfully with ID:', data.id);
+      // console.log('[SUCCESS] Company updated successfully with ID:', data.id);
+
+      // Clear cache to ensure updated company appears immediately
+      responseCache.clearByTable('companies', id);
+
       const transformedData = this.transformCompanyData(data);
       return transformedData;
     } catch (error) {
@@ -370,8 +374,8 @@ class CompanyService {
       const dbData = this.transformCompanyDataForDBPartial(patchData);
 
       // Debug: Log the data being sent to Supabase
-      console.log('[DEBUG] patchCompany input:', { id, patchData });
-      console.log('[DEBUG] transformed dbData:', dbData);
+      // console.log('[DEBUG] patchCompany input:', { id, patchData });
+      // console.log('[DEBUG] transformed dbData:', dbData);
 
       // Ensure we have some data to update
       if (Object.keys(dbData).length === 0) {
@@ -382,8 +386,8 @@ class CompanyService {
       const updatePromises = [];
       const keys = Object.keys(dbData);
 
-      console.log('[DEBUG] About to call Supabase update with data:', dbData);
-      console.log('[DEBUG] Keys to update:', keys);
+      // console.log('[DEBUG] About to call Supabase update with data:', dbData);
+      // console.log('[DEBUG] Keys to update:', keys);
 
       // Use the standard update method but with explicit type handling
       const { data, error } = await supabase
@@ -416,7 +420,11 @@ class CompanyService {
         throw new Error(`Failed to patch company: ${error.message}`);
       }
 
-      console.log('[SUCCESS] Company patched successfully with ID:', data.id);
+      // console.log('[SUCCESS] Company patched successfully with ID:', data.id);
+
+      // Clear cache to ensure patched company appears immediately
+      responseCache.clearByTable('companies', id);
+
       const transformedData = this.transformCompanyData(data);
       return transformedData;
     } catch (error) {
@@ -442,7 +450,9 @@ class CompanyService {
         throw new Error(`Failed to delete company: ${error.message}`);
       }
 
-      console.log('[SUCCESS] Company deleted successfully with ID:', data.id);
+      // Clear cache to ensure deleted company is removed immediately
+      responseCache.clearByTable('companies', id);
+
       return {
         id: data.id,
         companyName: data['company_name'],

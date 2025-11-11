@@ -69,6 +69,15 @@ KADA Connect serves as a comprehensive talent-matching platform, enabling:
 - Search Performance: Optimized fuzzy search
 
 
+### Real-time Database Change Detection
+- **Supabase Realtime Integration**: Automatic subscription to students/companies table changes
+- **Intelligent Cache Invalidation**: Column-specific change detection for targeted cache clearing
+- **Automatic Reconnection**: Exponential backoff reconnection logic for connection stability
+- **Health Monitoring**: Real-time service status endpoint for monitoring connection health
+- **Privacy Protection**: Automatic cache clearing on visibility/permission changes
+- **Multi-Table Support**: Simultaneous monitoring of students and companies tables
+- **Event-Driven Architecture**: Cache invalidation triggered by database events
+
 ### Optimized Response Caching System
 - **Client-Side HTTP Caching**: Extended browser caching with intelligent TTL management
 - **Memory Efficient**: 50MB server cache limit optimized for 512MB free-tier deployment
@@ -77,6 +86,7 @@ KADA Connect serves as a comprehensive talent-matching platform, enabling:
 - **Cache Statistics**: Real-time performance monitoring and hit rate tracking
 - **Memory Pressure Monitoring**: Automatic cache cleanup at 80% memory threshold
 - **Performance Gains**: 80-90% client cache hit rate with minimal server memory usage
+- **Real-time Data Synchronization**: Cache automatically invalidated on database changes
 
 ### Validation & Quality
 - **Input Validation**: Comprehensive Joi-based validation for all operations
@@ -105,6 +115,7 @@ KADA Connect serves as a comprehensive talent-matching platform, enabling:
 - **Runtime**: Node.js
 - **Framework**: Express.js
 - **Database**: Supabase (PostgreSQL)
+- **Realtime**: Supabase Realtime subscriptions
 - **Security**: Helmet.js
 - **Development**: Nodemon
 - **Environment**: dotenv
@@ -194,7 +205,7 @@ http://localhost:3001/api
 | **Companies** | 11 endpoints | Company profiles, search, statistics |
 | **Students** | 15 endpoints | Student profiles, filtering, analytics |
 | **Lookup** | 25 endpoints | Reference data, search, caching |
-| **System** | 3 endpoints | Health checks, API overview |
+| **System** | 4 endpoints | Health checks, API overview, realtime status |
 
 📖 **For complete API documentation**, see: **[docs/API.md](docs/API.md)**
 
@@ -232,6 +243,15 @@ The detailed API documentation includes:
 - **ETag Support**: Conditional requests minimize unnecessary data transfer
 - **Cache-Control Headers**: Optimized for different data types and change frequencies
 - **Bandwidth Efficiency**: Smart validation reduces repeated data transmission
+
+### Real-time Data Synchronization
+- **Database Event Detection**: Automatic detection of data changes via Supabase Realtime
+- **Event-Driven Cache Invalidation**: Cache clearing triggered by database events
+- **Column-Specific Targeting**: Only relevant cache entries cleared based on changed columns
+- **Multi-Table Support**: Simultaneous monitoring of students and companies tables
+- **Automatic Reconnection**: Exponential backoff for connection stability
+- **Health Monitoring**: Real-time service status and subscription monitoring
+- **Comprehensive Coverage**: Students (16 columns), Companies (6 columns) monitored for changes
 
 ## Client-Side Caching Architecture
 
@@ -280,10 +300,11 @@ kada-connect-be/
 │   │   ├── studentController.js
 │   │   └── lookupController.js
 │   ├── services/                             # Business logic and data operations
-│   │   ├── companyService.js
-│   │   ├── studentService.js
-│   │   ├── lookupService.js
-│   │   └── responseCacheService.js           # Optimized response caching
+│   │   ├── realtimeService.js                # Real-time database change detection
+│   │   ├── companyService.js                  # Company data operations with cache hooks
+│   │   ├── studentService.js                  # Student data operations with cache hooks
+│   │   ├── lookupService.js                   # Reference data with enhanced cache clearing
+│   │   └── responseCacheService.js           # Multi-tier caching with table-based clearing
 │   ├── routes/                               # API routing configuration
 │   │   ├── companies.js
 │   │   ├── students.js
@@ -361,6 +382,33 @@ curl -I http://localhost:3001/api/students | grep Cache-Control
 - Verify `ALLOWED_ORIGINS` includes your frontend domain
 - Check that preflight OPTIONS requests are handled properly
 - Ensure proper SSL/HTTPS configuration in production
+
+#### Real-time Service Issues
+**Issue**: Cache not updating after database changes
+**Solution**:
+- Check real-time service status: `curl http://localhost:3001/health/realtime`
+- Verify Supabase realtime is enabled in project settings
+- Monitor logs for `[REALTIME]` messages
+- Check subscription status in response headers
+- Verify database change events are being captured
+
+**Expected Realtime Logs**:
+```
+[REALTIME] Student UPDATE: { id: 123, hasStatusChange: false, changedColumns: ['full_name'] }
+[REALTIME] Company DELETE detected: { id: 456, name: "Company Name" }
+[REALTIME] Student DELETE cache invalidation completed for ID: 123
+[REALTIME] Targeted cache invalidation for students: 3 patterns
+```
+
+**Real-time Testing**:
+```bash
+# Test real-time service health
+curl http://localhost:3001/health/realtime
+
+# Monitor real-time events
+# Watch console for [REALTIME] log messages
+# Update student/company data in Supabase and observe cache invalidation
+```
 
 ### Debugging Tools
 

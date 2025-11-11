@@ -47,10 +47,13 @@ class LookupService {
   }
 
   /**
-   * Clear all cache
+   * Clear all cache and reset cache state
    */
   clearCache() {
     this.cache.clear();
+    this.cacheWarmed = false;
+    // Increment cache version to invalidate all versioned keys
+    this.cacheVersion = Date.now().toString();
   }
 
   /**
@@ -68,7 +71,6 @@ class LookupService {
       return;
     }
 
-    console.log('[INFO] Warming lookup service cache...');
     const startTime = Date.now();
 
     try {
@@ -90,8 +92,6 @@ class LookupService {
       ]);
 
       this.cacheWarmed = true;
-      const duration = Date.now() - startTime;
-      console.log(`[SUCCESS] Cache warmed in ${duration}ms`);
     } catch (error) {
       console.error('[ERROR] Failed to warm cache:', error.message);
     }
