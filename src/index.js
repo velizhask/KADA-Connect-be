@@ -3,53 +3,57 @@
  * Main application entry point
  */
 
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const compression = require('compression');
-const { testConnection } = require('./db');
-const { realtimeService } = require('./services/realtimeService');
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const compression = require("compression");
+const { testConnection } = require("./db");
+const { realtimeService } = require("./services/realtimeService");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Security middleware with cross-origin resource policy for images
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 
 // CORS configuration
 const corsOptions = {
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || [
-    'http://localhost:3000',
-    'http://localhost:3001'
+  origin: process.env.ALLOWED_ORIGINS?.split(",") || [
+    "http://localhost:3000",
+    "http://localhost:3001",
   ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
-  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+  optionsSuccessStatus: 200, // Some legacy browsers choke on 204
 };
 
 app.use(cors(corsOptions));
 
 // Compression middleware for optimized responses
-app.use(compression({
-  filter: (req, res) => {
-    if (req.headers['x-no-compression']) {
-      return false;
-    }
-    // Compress all responses, especially useful for base64 data
-    return compression.filter(req, res);
-  },
-  threshold: 1024, // Only compress responses larger than 1KB
-  level: 6, // Compression level (1-9, 6 is default)
-  chunkSize: 16 * 1024 // 16KB chunks
-}));
+app.use(
+  compression({
+    filter: (req, res) => {
+      if (req.headers["x-no-compression"]) {
+        return false;
+      }
+      // Compress all responses, especially useful for base64 data
+      return compression.filter(req, res);
+    },
+    threshold: 1024, // Only compress responses larger than 1KB
+    level: 6, // Compression level (1-9, 6 is default)
+    chunkSize: 16 * 1024, // 16KB chunks
+  })
+);
 
 // Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -58,123 +62,131 @@ app.use((req, res, next) => {
 });
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.status(200).json({
-    status: 'OK',
-    message: 'KADA Connect Backend is running',
+    status: "OK",
+    message: "KADA Connect Backend is running",
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    version: "1.0.0",
   });
 });
 
 // Realtime status endpoint
-app.get('/health/realtime', (req, res) => {
+app.get("/health/realtime", (req, res) => {
   const realtimeStatus = realtimeService.getStatus();
 
   res.status(200).json({
-    status: realtimeStatus.isConnected ? 'OK' : 'ERROR',
+    status: realtimeStatus.isConnected ? "OK" : "ERROR",
     realtime: realtimeStatus,
-    message: realtimeStatus.isConnected ?
-      'Realtime database change detection is active' :
-      'Realtime database change detection is not active',
+    message: realtimeStatus.isConnected
+      ? "Realtime database change detection is active"
+      : "Realtime database change detection is not active",
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    version: "1.0.0",
   });
 });
 
 // Import routes
-const companyRoutes = require('./routes/companies');
-const studentRoutes = require('./routes/students');
-const lookupRoutes = require('./routes/lookup');
+const companyRoutes = require("./routes/companies");
+const studentRoutes = require("./routes/students");
+const lookupRoutes = require("./routes/lookup");
 
 // Import middleware
-const { errorHandler, notFoundHandler } = require('./middlewares/error-handler');
+const {
+  errorHandler,
+  notFoundHandler,
+} = require("./middlewares/error-handler");
 
 // API routes (will be added later)
-app.get('/api', (req, res) => {
+app.get("/api", (req, res) => {
   res.status(200).json({
-    message: 'KADA Connect API',
-    version: '1.0.0',
+    message: "KADA Connect API",
+    version: "1.0.0",
     endpoints: {
-      health: '/health',
-      companies: '/api/companies',
-      students: '/api/students',
-      industries: '/api/industries',
-      universities: '/api/universities',
-      majors: '/api/majors',
-      techRoles: '/api/tech-roles',
-      preferredIndustries: '/api/preferred-industries',
-      docs: '/api/docs'
-    }
+      health: "/health",
+      companies: "/api/companies",
+      students: "/api/students",
+      industries: "/api/industries",
+      universities: "/api/universities",
+      majors: "/api/majors",
+      techRoles: "/api/tech-roles",
+      preferredIndustries: "/api/preferred-industries",
+      docs: "/api/docs",
+    },
   });
 });
 
 // API documentation endpoint
-app.get('/api/docs', (req, res) => {
+app.get("/api/docs", (req, res) => {
   res.status(200).json({
-    message: 'KADA Connect API Documentation',
-    version: '1.0.0',
-    baseUrl: `${req.protocol}://${req.get('host')}/api`,
+    message: "KADA Connect API Documentation",
+    version: "1.0.0",
+    baseUrl: `${req.protocol}://${req.get("host")}/api`,
     endpoints: {
       companies: {
-        'GET /companies': 'List companies with filtering and pagination',
-        'GET /companies/:id': 'Get company by ID',
-        'POST /companies': 'Create new company (admin only)',
-        'PUT /companies/:id': 'Update company (admin only)',
-        'DELETE /companies/:id': 'Delete company (admin only)',
-        'GET /companies/stats': 'Get company statistics',
-        'POST /companies/search': 'Advanced company search',
-        'POST /companies/validate-logo': 'Validate company logo upload'
+        "GET /companies": "List companies with filtering and pagination",
+        "GET /companies/:id": "Get company by ID",
+        "POST /companies": "Create new company (admin only)",
+        "PUT /companies/:id": "Update company (admin only)",
+        "DELETE /companies/:id": "Delete company (admin only)",
+        "GET /companies/stats": "Get company statistics",
+        "POST /companies/search": "Advanced company search",
+        "POST /companies/validate-logo": "Validate company logo upload",
       },
       students: {
-        'GET /students': 'List students with filtering and pagination',
-        'GET /students/:id': 'Get student by ID',
-        'POST /students': 'Create new student (admin only)',
-        'PUT /students/:id': 'Update student (admin only)',
-        'DELETE /students/:id': 'Delete student (admin only)',
-        'GET /students/stats': 'Get student statistics',
-        'GET /students/featured': 'Get featured students',
-        'GET /students/status-options': 'Get student status options',
-        'POST /students/search': 'Advanced student search',
-        'POST /students/validate-cv': 'Validate student CV upload',
-        'POST /students/validate-photo': 'Validate student photo upload'
+        "GET /students": "List students with filtering and pagination",
+        "GET /students/:id": "Get student by ID",
+        "POST /students": "Create new student (admin only)",
+        "PUT /students/:id": "Update student (admin only)",
+        "DELETE /students/:id": "Delete student (admin only)",
+        "GET /students/stats": "Get student statistics",
+        "GET /students/featured": "Get featured students",
+        "GET /students/status-options": "Get student status options",
+        "POST /students/search": "Advanced student search",
+        "POST /students/validate-cv": "Validate student CV upload",
+        "POST /students/validate-photo": "Validate student photo upload",
       },
       lookup: {
-        'GET /lookup/all': 'Get all lookup data',
-        'GET /industries': 'Get industries list',
-        'GET /tech-roles': 'Get tech roles list',
-        'GET /tech-role-categories': 'Get tech role categories',
-        'GET /tech-roles/category/:category': 'Get tech roles by category',
-        'GET /preferred-industries': 'Get preferred industries from students',
-        'GET /search/industries': 'Search industries',
-        'GET /search/tech-roles': 'Search tech roles',
-        'GET /search/preferred-industries': 'Search preferred industries',
-        'GET /suggestions/tech-skills': 'Get tech skill suggestions',
-        'GET /universities': 'Returns array of unique universities',
-        'GET /search/universities?q=query': 'Search universities with fuzzy matching',
-        'GET /popular/universities': 'Universities sorted by student count',
-        'GET /majors': 'Returns array of unique academic majors',
-        'GET /search/majors?q=query': 'Search majors with fuzzy matching',
-        'GET /popular/majors': 'Majors sorted by student count',
-        'POST /validate/tech-skills': 'Validate tech skills array',
-        'GET /popular/industries': 'Get popular industries',
-        'GET /popular/tech-roles': 'Get popular tech roles',
-        'GET /popular/tech-skills': 'Get popular tech skills',
-        'GET /popular/preferred-industries': 'Get popular preferred industries',
-        'POST /cache/clear': 'Clear lookup cache (admin only)',
-        'GET /cache/status': 'Get cache status'
-      }
+        "GET /lookup/all": "Get all lookup data",
+        "GET /industries": "Get industries list",
+        "GET /tech-roles": "Get tech roles list",
+        "GET /tech-role-categories": "Get tech role categories",
+        "GET /tech-roles/category/:category": "Get tech roles by category",
+        "GET /preferred-industries": "Get preferred industries from students",
+        "GET /search/industries": "Search industries",
+        "GET /search/tech-roles": "Search tech roles",
+        "GET /search/preferred-industries": "Search preferred industries",
+        "GET /suggestions/tech-skills": "Get tech skill suggestions",
+        "GET /universities": "Returns array of unique universities",
+        "GET /search/universities?q=query":
+          "Search universities with fuzzy matching",
+        "GET /popular/universities": "Universities sorted by student count",
+        "GET /majors": "Returns array of unique academic majors",
+        "GET /search/majors?q=query": "Search majors with fuzzy matching",
+        "GET /popular/majors": "Majors sorted by student count",
+        "POST /validate/tech-skills": "Validate tech skills array",
+        "GET /popular/industries": "Get popular industries",
+        "GET /popular/tech-roles": "Get popular tech roles",
+        "GET /popular/tech-skills": "Get popular tech skills",
+        "GET /popular/preferred-industries": "Get popular preferred industries",
+        "POST /cache/clear": "Clear lookup cache (admin only)",
+        "GET /cache/status": "Get cache status",
+      },
+    },
+    auth: {
+      "POST /register": "Register student/company account",
+      "POST /login": "Log in using student/company account",
     },
     admin: {
-      note: 'Admin operations require X-Admin-Key header with valid API key'
-    }
+      note: "Admin operations require X-Admin-Key header with valid API key",
+    },
   });
 });
 
 // Mount API routes
-app.use('/api/companies', companyRoutes);
-app.use('/api/students', studentRoutes);
-app.use('/api', lookupRoutes);
+app.use("/api/companies", companyRoutes);
+app.use("/api/students", studentRoutes);
+app.use("/api", lookupRoutes);
 
 // 404 handler
 app.use(notFoundHandler);
@@ -192,7 +204,10 @@ const startServer = async () => {
     try {
       await realtimeService.initialize();
     } catch (realtimeError) {
-      console.error('[ERROR] Failed to initialize realtime subscriptions:', realtimeError.message);
+      console.error(
+        "[ERROR] Failed to initialize realtime subscriptions:",
+        realtimeError.message
+      );
     }
 
     // Start Express server
@@ -201,35 +216,41 @@ const startServer = async () => {
         resolve();
       });
 
-      server.on('error', (error) => {
-        console.error('[ERROR] Server failed to start:', error.message);
+      server.on("error", (error) => {
+        console.error("[ERROR] Server failed to start:", error.message);
         reject(error);
       });
     });
   } catch (error) {
-    console.error('[ERROR] Failed to start server:', error.message);
+    console.error("[ERROR] Failed to start server:", error.message);
     process.exit(1);
   }
 };
 
 // Handle graceful shutdown
-process.on('SIGTERM', async () => {
+process.on("SIGTERM", async () => {
   // Cleanup realtime subscriptions
   try {
     await realtimeService.cleanup();
   } catch (error) {
-    console.error('[CLEANUP] Error cleaning up realtime subscriptions:', error.message);
+    console.error(
+      "[CLEANUP] Error cleaning up realtime subscriptions:",
+      error.message
+    );
   }
 
   process.exit(0);
 });
 
-process.on('SIGINT', async () => {
+process.on("SIGINT", async () => {
   // Cleanup realtime subscriptions
   try {
     await realtimeService.cleanup();
   } catch (error) {
-    console.error('[CLEANUP] Error cleaning up realtime subscriptions:', error.message);
+    console.error(
+      "[CLEANUP] Error cleaning up realtime subscriptions:",
+      error.message
+    );
   }
 
   process.exit(0);
