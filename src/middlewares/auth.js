@@ -16,11 +16,11 @@ const { supabase } = require("../db");
 const authService = require("../services/authService");
 
 /**
- * Middleware to check if the user is approved by an admin.
+ * Create an Express middleware that validates a Bearer token.
  * @param {boolean} [required=true] - If true, requests without a valid token will be rejected with 401.
  * @returns {function} Express middleware (req, res, next)
  */
-function verifyJWT(required = true) {
+function JWTAuth(required = true) {
   return async function (req, res, next) {
     try {
       const authHeader = (req.headers.authorization || "").toString();
@@ -31,7 +31,10 @@ function verifyJWT(required = true) {
 
       if (!token) {
         if (required) {
-          return res.status(401).json({ error: "Authentication required" });
+          return res.status(401).json({
+            success: false,
+            message: "Authentication required",
+          });
         }
 
         req.user = null;
@@ -43,7 +46,9 @@ function verifyJWT(required = true) {
 
       if (!user) {
         if (required)
-          return res.status(401).json({ error: "Invalid or expired token" });
+          return res
+            .status(401)
+            .json({ success: false, message: "Invalid or expired token" });
         req.user = null;
         return next();
       }
@@ -61,11 +66,11 @@ function verifyJWT(required = true) {
 }
 
 /**
- * Create an Express middleware that validates a Bearer token.
+ * Middleware to check if the user is approved by an admin (using userId).
  * @param {boolean} [required=true] - If true, the route can only be accessed when you already have been approved by admin
  * @returns {function} Express middleware (req, res, next)
  */
-function verifyApproval(required = true) {
+function checkApprovalStatus(required = true) {
   return async function (req, res, next) {
     try {
       if (required) {
@@ -75,7 +80,6 @@ function verifyApproval(required = true) {
           return res.status(400).json({
             success: false,
             message: "User id is required",
-            data: null,
           });
         }
 
@@ -112,8 +116,8 @@ function verifyApproval(required = true) {
 }
 
 module.exports = {
-  requireAuth: verifyJWT(true),
-  optionalAuth: verifyJWT(false),
-  requireApproval: verifyApproval(true),
-  optionalApproval: verifyApproval(false),
+  requireAuth: JWTAuth(true),
+  optionalAuth: JWTAuth(false),
+  requireApproval: checkApprovalStatus(true),
+  optionalApproval: checkApprovalStatus(false),
 };

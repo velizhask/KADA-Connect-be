@@ -18,7 +18,7 @@ class AuthService {
   async getUserFromToken(token) {
     try {
       if (!token) {
-        throw new Error("Missing berarer token");
+        throw new Error("Missing bearer token");
       }
 
       const { data, error } = await supabase.auth.getUser(token);
@@ -38,6 +38,90 @@ class AuthService {
     } catch (error) {
       console.error("[ERROR] AuthService.getUserFromToken:", error?.message);
       throw error;
+    }
+  }
+
+  /**
+   *
+   * Get a full user profile using request token
+   *
+   * @async
+   * @author sqizzo
+   * @param {string} userId - The JWT access token from the authorization header.
+   * @returns {Promise<Object>} - The user profile.
+   * @throws {Error} If userId is missing, invalid, or Supabase returns an error.
+   * @TODO No caching applied yet
+   *
+   */
+  async getUserProfile(token) {
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser(token);
+
+      if (authError || !user) {
+        console.error("[ERROR] Invalid auth token:", authError?.message);
+        throw new Error("Unauthorized");
+      }
+
+      const { data: profile, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        console.error("[ERROR] Failed to get user profile:", error?.message);
+        throw new Error("Failed to fetch user profile");
+      }
+
+      if (!profile) {
+        console.error("[ERROR] Failed to get user profile userId:", userId);
+        throw new Error("User profile not found");
+      }
+
+      return profile;
+    } catch (error) {
+      console.error("[ERROR] AuthService.getUserProfile:", error?.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Normalize role extraction from a Supabase user object.
+   * @param {object} user
+   * @returns {string|null}
+   */
+  async getUserRole(user) {
+    try {
+      if (!user) return null;
+
+      if (typeof user === "object") {
+        if (user.id) {
+          try {
+            const { data: profile, error } = await supabase
+              .from("users")
+              .select("role")
+              .eq("id", user.id)
+              .single();
+
+            if (!error && profile && typeof profile.role === "string") {
+              return profile.role;
+            }
+          } catch (err) {
+            console.warn(
+              "[ERROR] AuthService.getUserRole DB lookup failed:",
+              err?.message || err
+            );
+          }
+        }
+      }
+
+      return null;
+    } catch (err) {
+      console.error("[ERROR] AuthService.getUserRole:", err?.message || err);
+      return null;
     }
   }
 
@@ -129,6 +213,8 @@ class AuthService {
   /**
    *
    * Invalidate all access token from supabase
+   * Note:
+   * For server-side management, you can revoke all refresh tokens for a user by passing a user's JWT through to auth.api.signOut(JWT: string). There is no way to revoke a user's access token jwt until it expires. It is recommended to set a shorter expiry on the jwt for this reason. (Supabase docs)
    *
    * @async
    * @author sqizzo
@@ -147,8 +233,8 @@ class AuthService {
       });
 
       if (error) {
-        console.error("[ERROR] Sign-out failed:", error.message);
-        throw new Error(error.message);
+        console.error("[ERROR] Sign-out failed:", error?.message);
+        throw new Error(error?.message);
       }
     } catch (error) {
       console.error("[ERROR] AuthService.logOut:", error?.message);

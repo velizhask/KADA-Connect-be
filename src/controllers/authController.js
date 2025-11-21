@@ -49,8 +49,7 @@ class AuthController {
       return res.status(200).json({
         success: true,
         message: "Login successful",
-        user: response.user,
-        accessToken: response.accessToken,
+        accessToken: response.session.access_token,
       });
     } catch (error) {
       next(error);
@@ -69,11 +68,36 @@ class AuthController {
         });
       }
 
-      const response = await authService.signOut(token);
+      const response = await authService.logOut(token);
 
       return res.json({
+        response,
         success: true,
-        message: response.message,
+        message: "Logged out successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMyProfile(req, res, next) {
+    try {
+      const authHeader = req.headers.authorization || "";
+      const token = authHeader.replace(/^Bearer\s+/i, "");
+
+      if (!token) {
+        return res.status(400).json({
+          success: false,
+          message: "Token is required",
+        });
+      }
+
+      const response = await authService.getUserProfile(token);
+
+      res.status(200).json({
+        success: true,
+        message: "Profile fetched successfully",
+        data: response,
       });
     } catch (error) {
       next(error);
