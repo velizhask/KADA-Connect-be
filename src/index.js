@@ -177,6 +177,8 @@ app.get("/api/docs", (req, res) => {
     auth: {
       "POST /register": "Register student/company account",
       "POST /login": "Log in using student/company account",
+      "POST /logout": "Log out user (client side)",
+      "GET /me": "Get logged in user profile",
     },
     admin: {
       note: "Admin operations require X-Admin-Key header with valid API key",
