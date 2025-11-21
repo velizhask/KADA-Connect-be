@@ -53,7 +53,6 @@ class AuthService {
    * @throws {Error} If email or password is wrong
    *
    */
-
   async signIn(email, password) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -74,21 +73,22 @@ class AuthService {
 
   /**
    *
-   * Sign in using Supabase Auth API using email/password
+   * Sign up using Supabase Auth API
    *
    * @async
    * @author sqizzo
    * @param {string} email - User's email
+   * @param {string} fullName- User's full name
    * @param {string} password - User's password
    * @param {string} role - User's role (["student"," company"])
    * @returns {Promise<Object>} - Auth response (user + session if autoLogin enabled)
    * @throws {Error} If data is incomplete.
    *
    */
-  async signUp(email, password, role) {
+  async signUp(email, fullName, password, role) {
     try {
-      if (!email || !password) {
-        throw new Error("Email and password are required");
+      if (!email || !password || !fullName) {
+        throw new Error("Email, full name, and password are required");
       }
 
       const allowedRoles = ["student", "company", "admin"];
@@ -101,7 +101,7 @@ class AuthService {
         email,
         password,
         options: {
-          data: { role },
+          data: { role, fullName },
         },
       });
 
@@ -111,14 +111,47 @@ class AuthService {
       }
 
       const response = {
-        user: data.user,
-        session: data.session,
+        user: {
+          email,
+          fullName,
+          role,
+        },
         message: "Registration successfull",
       };
 
       return response;
     } catch (error) {
       console.error("[ERROR] AuthService.signUp:", error?.message);
+      throw error;
+    }
+  }
+
+  /**
+   *
+   * Invalidate all access token from supabase
+   *
+   * @async
+   * @author sqizzo
+   * @param {string} token - The JWT access token from the authorization header.
+   * @returns {Promise<Object>} - The authenticated user object from supabase
+   * @throws {Error} If the token is missing, invalid, or Supabase returns an error.
+   *
+   */
+  async logOut(token) {
+    try {
+      if (!token) {
+        throw new Error("Missing berarer token");
+      }
+      const { error } = await supabase.auth.signOut({
+        scope: "global",
+      });
+
+      if (error) {
+        console.error("[ERROR] Sign-out failed:", error.message);
+        throw new Error(error.message);
+      }
+    } catch (error) {
+      console.error("[ERROR] AuthService.logOut:", error?.message);
       throw error;
     }
   }

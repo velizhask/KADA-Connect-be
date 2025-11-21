@@ -90,6 +90,7 @@ app.get("/health/realtime", (req, res) => {
 const companyRoutes = require("./routes/companies");
 const studentRoutes = require("./routes/students");
 const lookupRoutes = require("./routes/lookup");
+const authRoutes = require("./routes/auth");
 
 // Import middleware
 const {
@@ -186,6 +187,7 @@ app.get("/api/docs", (req, res) => {
 // Mount API routes
 app.use("/api/companies", companyRoutes);
 app.use("/api/students", studentRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api", lookupRoutes);
 
 // 404 handler

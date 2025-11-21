@@ -4,7 +4,7 @@
  * Usage:
  * - Require auth for a route: `router.post('/private', auth(true), handler)`
  * - Optional auth: `router.get('/maybe', auth(false), handler)` (attaches `req.user` when present)
- * - Convenience exports: `const auth = require('./middlewares/auth');` then use `auth.requireAuth` or `auth.optionalAuth`.
+ * - Convenience exports: `const auth = require('./middlewares/verifyJWT');` then use `auth.requireAuth` or `auth.optionalAuth`.
  *
  * The middleware expects an `Authorization` header with a Bearer token.
  * attaches `req.user` when present and calls `next()`.
@@ -12,14 +12,15 @@
  * Returns 401 when authentication is required but missing/invalid, and 500 on unexpected errors.
  */
 
+const { supabase } = require("../db");
 const authService = require("../services/authService");
 
 /**
- * Create an Express middleware that validates a Bearer token.
+ * Middleware to check if the user is approved by an admin.
  * @param {boolean} [required=true] - If true, requests without a valid token will be rejected with 401.
  * @returns {function} Express middleware (req, res, next)
  */
-function auth(required = true) {
+function verifyJWT(required = true) {
   return async function (req, res, next) {
     try {
       const authHeader = (req.headers.authorization || "").toString();
@@ -50,23 +51,69 @@ function auth(required = true) {
       req.user = user;
       return next();
     } catch (err) {
-      console.error("[auth] Error verifying token:", err?.message || err);
-      const msg =
-        err && /invalid|expired|missing|not found/i.test(err.message || "")
-          ? "Invalid or expired token"
-          : "Authentication service error";
-
-      return res
-        .status(
-          /invalid|expired|missing|not found/i.test(err.message || "")
-            ? 401
-            : 500
-        )
-        .json({ error: msg });
+      console.error("[ERROR] verifyJWT Middleware:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
     }
   };
 }
 
-module.exports = auth;
-module.exports.requireAuth = auth(true);
-module.exports.optionalAuth = auth(false);
+/**
+ * Create an Express middleware that validates a Bearer token.
+ * @param {boolean} [required=true] - If true, the route can only be accessed when you already have been approved by admin
+ * @returns {function} Express middleware (req, res, next)
+ */
+function verifyApproval(required = true) {
+  return async function (req, res, next) {
+    try {
+      if (required) {
+        const userId = req.user?.id;
+
+        if (!userId) {
+          return res.status(400).json({
+            success: false,
+            message: "User id is required",
+            data: null,
+          });
+        }
+
+        const { data, error } = await supabase
+          .from("users")
+          .select("approved")
+          .eq("id", userId)
+          .single();
+
+        if (error) {
+          console.error("[ERROR] DB error checking approval:", error);
+          return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+          });
+        }
+
+        if (!data || data.approved === false) {
+          return res.status(403).json({
+            success: false,
+            message: "Your account is pending admin approval",
+          });
+        }
+      }
+      next();
+    } catch (err) {
+      console.error("[ERROR] verifyApproval Middleware:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  };
+}
+
+module.exports = {
+  requireAuth: verifyJWT(true),
+  optionalAuth: verifyJWT(false),
+  requireApproval: verifyApproval(true),
+  optionalApproval: verifyApproval(false),
+};
