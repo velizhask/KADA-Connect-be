@@ -111,7 +111,7 @@ class StudentService {
       };
       const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheParams);
 
-      if (cachedResponse) {
+      if (cachedResponse && cachedResponse.data.user_id) {
         return cachedResponse.data;
       }
 
@@ -119,6 +119,7 @@ class StudentService {
         .from('students')
         .select(`
           id,
+          user_id,
           "full_name",
           status,
           employment_status,
@@ -150,7 +151,9 @@ class StudentService {
         return null; // Hide employed students
       }
 
+      // For internal use (authorization checks), attach user_id to the public data
       const transformedData = this.transformStudentDataPublic(data);
+      transformedData.user_id = data.user_id;
 
       // Cache the individual student response
       responseCache.setAPIResponse(cacheKey, cacheParams, transformedData);
@@ -459,6 +462,7 @@ class StudentService {
         .insert([dbData])
         .select(`
           id,
+          user_id,
           "full_name",
           status,
           employment_status,
@@ -641,7 +645,7 @@ class StudentService {
   }
 
   transformStudentDataForDB(studentData) {
-    return {
+    const dbData = {
       'full_name': studentData.fullName,
       'status': studentData.status,
       'employment_status': studentData.employmentStatus,
@@ -656,6 +660,13 @@ class StudentService {
       'portfolio_link': studentData.portfolioLink || null,
       'phone_number': studentData.phoneNumber ? parseInt(studentData.phoneNumber) : null
     };
+
+    // Include user_id if provided (for ownership tracking)
+    if (studentData.user_id) {
+      dbData['user_id'] = studentData.user_id;
+    }
+
+    return dbData;
   }
 
   transformStudentDataForDBPartial(patchData) {

@@ -83,7 +83,7 @@ class CompanyService {
       const cacheKey = 'getCompanyById';
       const cachedResponse = responseCache.getAPIResponse(cacheKey, { id });
 
-      if (cachedResponse) {
+      if (cachedResponse && cachedResponse.data.user_id) {
         return cachedResponse.data;
       }
 
@@ -91,6 +91,7 @@ class CompanyService {
         .from('companies')
         .select(`
           id,
+          user_id,
           company_name,
           company_summary_description,
           industry_sector,
@@ -115,6 +116,9 @@ class CompanyService {
       }
 
       const transformedData = this.transformCompanyDataPublic(data);
+
+      // For internal use (authorization checks), attach user_id to the public data
+      transformedData.user_id = data.user_id;
 
       // Cache the individual company response
       responseCache.setAPIResponse(cacheKey, { id }, transformedData);
@@ -286,6 +290,7 @@ class CompanyService {
         .insert([dbData])
         .select(`
           id,
+          user_id,
           company_name,
           company_summary_description,
           industry_sector,
@@ -482,6 +487,11 @@ class CompanyService {
     // Only include email_address if it exists (handle potential missing field)
     if (companyData.emailAddress !== undefined) {
       dbData['email_address'] = companyData.emailAddress;
+    }
+
+    // Include user_id if provided (for ownership tracking)
+    if (companyData.user_id) {
+      dbData['user_id'] = companyData.user_id;
     }
 
     return dbData;

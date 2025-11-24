@@ -1,22 +1,18 @@
 /**
- * Authentication middleware factory.
+ * Authentication middleware using Supabase Auth
  *
  * Usage:
- * - Require auth for a route: `router.post('/private', auth(true), handler)`
- * - Optional auth: `router.get('/maybe', auth(false), handler)` (attaches `req.user` when present)
- * - Convenience exports: `const auth = require('./middlewares/verifyJWT');` then use `auth.requireAuth` or `auth.optionalAuth`.
+ * - Require auth for a route: `router.post('/private', requireAuth, handler)`
+ * - Optional auth: `router.get('/maybe', optionalAuth, handler)` (attaches `req.user` when present)
  *
  * The middleware expects an `Authorization` header with a Bearer token.
- * attaches `req.user` when present and calls `next()`.
- *
- * Returns 401 when authentication is required but missing/invalid, and 500 on unexpected errors.
+ * Uses Supabase's built-in JWT verification for reliability and security.
  */
 
 const { supabase } = require("../db");
-const authService = require("../services/authService");
 
 /**
- * Create an Express middleware that validates a Bearer token.
+ * Create an Express middleware that validates a Bearer token using Supabase Auth.
  * @param {boolean} [required=true] - If true, requests without a valid token will be rejected with 401.
  * @returns {function} Express middleware (req, res, next)
  */
@@ -41,10 +37,11 @@ function JWTAuth(required = true) {
         return next();
       }
 
-      // Verify using authService.js
-      const user = await authService.getUserFromToken(token);
+      // Verify token using Supabase Auth (built-in JWT verification)
+      const { data, error } = await supabase.auth.getUser(token);
 
-      if (!user) {
+      if (error || !data?.user) {
+        console.error("[ERROR] Supabase auth verification failed:", error);
         if (required)
           return res
             .status(401)
@@ -53,7 +50,9 @@ function JWTAuth(required = true) {
         return next();
       }
 
-      req.user = user;
+      // Attach the authenticated user to the request
+      // The user object includes id, email, and other auth metadata
+      req.user = data.user;
       return next();
     } catch (err) {
       console.error("[ERROR] verifyJWT Middleware:", err);

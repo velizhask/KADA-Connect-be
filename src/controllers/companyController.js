@@ -1,4 +1,6 @@
 const companyService = require('../services/companyService');
+const authService = require('../services/authService');
+const { supabase } = require('../db');
 
 class CompanyController {
   async getCompanies(req, res, next) {
@@ -143,6 +145,10 @@ class CompanyController {
   async createCompany(req, res, next) {
     try {
       const companyData = req.body;
+      const currentUser = req.user;
+
+      // Set the user_id to the authenticated user's ID for ownership
+      companyData.user_id = currentUser.id;
 
       const newCompany = await companyService.createCompany(companyData);
 
@@ -168,14 +174,39 @@ class CompanyController {
         });
       }
 
-      const updatedCompany = await companyService.updateCompany(parseInt(id), updateData);
+      // Authorization check: user must be admin or own the resource
+      const currentUser = req.user;
 
-      if (!updatedCompany) {
+      // Check if user is admin or owns this company
+      const company = await companyService.getCompanyById(parseInt(id));
+      if (!company) {
         return res.status(404).json({
           success: false,
           message: 'Company not found'
         });
       }
+
+      // Allow if admin or if user owns this company
+      const isOwner = company.user_id === currentUser.id;
+
+      // If not owner, check if user is admin
+      if (!isOwner) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', currentUser.id)
+          .single();
+
+        if (!userData || userData.role !== 'admin') {
+          return res.status(403).json({
+            success: false,
+            message: 'You can only update your own company profile',
+            data: null
+          });
+        }
+      }
+
+      const updatedCompany = await companyService.updateCompany(parseInt(id), updateData);
 
       res.status(200).json({
         success: true,
@@ -207,14 +238,39 @@ class CompanyController {
         });
       }
 
-      const patchedCompany = await companyService.patchCompany(parseInt(id), patchData);
+      // Authorization check: user must be admin or own the resource
+      const currentUser = req.user;
 
-      if (!patchedCompany) {
+      // Check if user is admin or owns this company
+      const company = await companyService.getCompanyById(parseInt(id));
+      if (!company) {
         return res.status(404).json({
           success: false,
           message: 'Company not found'
         });
       }
+
+      // Allow if admin or if user owns this company
+      const isOwner = company.user_id === currentUser.id;
+
+      // If not owner, check if user is admin
+      if (!isOwner) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', currentUser.id)
+          .single();
+
+        if (!userData || userData.role !== 'admin') {
+          return res.status(403).json({
+            success: false,
+            message: 'You can only update your own company profile',
+            data: null
+          });
+        }
+      }
+
+      const patchedCompany = await companyService.patchCompany(parseInt(id), patchData);
 
       res.status(200).json({
         success: true,
@@ -237,14 +293,32 @@ class CompanyController {
         });
       }
 
-      const result = await companyService.deleteCompany(parseInt(id));
+      // Authorization check: user must be admin or own the resource
+      const currentUser = req.user;
+      const userRole = await authService.getUserRole(currentUser);
 
-      if (!result) {
+      // Check if user is admin or owns this company
+      const company = await companyService.getCompanyById(parseInt(id));
+      if (!company) {
         return res.status(404).json({
           success: false,
           message: 'Company not found'
         });
       }
+
+      // Allow if admin or if user owns this company
+      const isOwner = company.user_id === currentUser.id;
+      const isAdmin = userRole === 'admin';
+
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only delete your own company profile',
+          data: null
+        });
+      }
+
+      const result = await companyService.deleteCompany(parseInt(id));
 
       res.status(200).json({
         success: true,

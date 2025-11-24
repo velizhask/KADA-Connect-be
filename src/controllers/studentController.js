@@ -1,4 +1,6 @@
 const studentService = require('../services/studentService');
+const authService = require('../services/authService');
+const { supabase } = require('../db');
 
 class StudentController {
   async getStudents(req, res, next) {
@@ -224,6 +226,10 @@ class StudentController {
   async createStudent(req, res, next) {
     try {
       const studentData = req.body;
+      const currentUser = req.user;
+
+      // Set the user_id to the authenticated user's ID for ownership
+      studentData.user_id = currentUser.id;
 
       const newStudent = await studentService.createStudent(studentData);
 
@@ -250,15 +256,40 @@ class StudentController {
         });
       }
 
-      const updatedStudent = await studentService.updateStudent(parseInt(id), updateData);
+      // Authorization check: user must be admin or own the resource
+      const currentUser = req.user;
 
-      if (!updatedStudent) {
+      // Check if user is admin or owns this student profile
+      const student = await studentService.getStudentById(parseInt(id));
+      if (!student) {
         return res.status(404).json({
           success: false,
           message: 'Student not found',
           data: null
         });
       }
+
+      // Allow if admin or if user owns this student profile
+      const isOwner = student.user_id === currentUser.id;
+
+      // If not owner, check if user is admin
+      if (!isOwner) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', currentUser.id)
+          .single();
+
+        if (!userData || userData.role !== 'admin') {
+          return res.status(403).json({
+            success: false,
+            message: 'You can only update your own student profile',
+            data: null
+          });
+        }
+      }
+
+      const updatedStudent = await studentService.updateStudent(parseInt(id), updateData);
 
       res.status(200).json({
         success: true,
@@ -292,15 +323,40 @@ class StudentController {
         });
       }
 
-      const patchedStudent = await studentService.patchStudent(parseInt(id), patchData);
+      // Authorization check: user must be admin or own the resource
+      const currentUser = req.user;
 
-      if (!patchedStudent) {
+      // Check if user is admin or owns this student profile
+      const student = await studentService.getStudentById(parseInt(id));
+      if (!student) {
         return res.status(404).json({
           success: false,
           message: 'Student not found',
           data: null
         });
       }
+
+      // Allow if admin or if user owns this student profile
+      const isOwner = student.user_id === currentUser.id;
+
+      // If not owner, check if user is admin
+      if (!isOwner) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', currentUser.id)
+          .single();
+
+        if (!userData || userData.role !== 'admin') {
+          return res.status(403).json({
+            success: false,
+            message: 'You can only update your own student profile',
+            data: null
+          });
+        }
+      }
+
+      const patchedStudent = await studentService.patchStudent(parseInt(id), patchData);
 
       res.status(200).json({
         success: true,
@@ -324,15 +380,33 @@ class StudentController {
         });
       }
 
-      const result = await studentService.deleteStudent(parseInt(id));
+      // Authorization check: user must be admin or own the resource
+      const currentUser = req.user;
+      const userRole = await authService.getUserRole(currentUser);
 
-      if (!result) {
+      // Check if user is admin or owns this student profile
+      const student = await studentService.getStudentById(parseInt(id));
+      if (!student) {
         return res.status(404).json({
           success: false,
           message: 'Student not found',
           data: null
         });
       }
+
+      // Allow if admin or if user owns this student profile
+      const isOwner = student.user_id === currentUser.id;
+      const isAdmin = userRole === 'admin';
+
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only delete your own student profile',
+          data: null
+        });
+      }
+
+      const result = await studentService.deleteStudent(parseInt(id));
 
       res.status(200).json({
         success: true,

@@ -3,6 +3,7 @@ const router = express.Router();
 const lookupController = require('../controllers/lookupController');
 const { validateSearchQuery, sanitizeInput } = require('../middlewares/validation');
 const { staticCacheHeaders, popularCacheHeaders, listCacheHeaders, cacheStatsHeaders } = require('../middlewares/cacheHeaders');
+const { requireAuth } = require('../middlewares/auth');
 
 // Apply sanitization middleware to all routes
 router.use(sanitizeInput);
@@ -140,12 +141,12 @@ router.get('/popular/preferred-industries', popularCacheHeaders, lookupControlle
  * POST /api/cache/clear
  * Clear lookup cache (admin only)
  */
-router.post('/cache/clear', lookupController.clearCache);
+router.post('/cache/clear', requireAuth, lookupController.clearCache);
 
 /**
  * GET /api/cache/status
  * Get cache status
  */
-router.get('/cache/status', lookupController.getCacheStatus);
+router.get('/cache/status', requireAuth, lookupController.getCacheStatus);
 
 module.exports = router;

@@ -12,10 +12,10 @@ const {
 const {
   listCacheHeaders,
   resourceCacheHeaders,
-  base64CacheHeaders,
   cacheStatsHeaders,
 } = require("../middlewares/cacheHeaders");
 const { requireAuth } = require("../middlewares/auth");
+const roleCheck = require("../middlewares/roleCheck");
 const { requireAdmin } = require("../middlewares/roleCheck");
 
 // Apply sanitization middleware to all routes
@@ -28,7 +28,7 @@ router.use(cacheStatsHeaders);
 router.get(
   "/",
   requireAuth,
-  requireAdmin,
+  roleCheck(['admin', 'student', 'company']),
   listCacheHeaders,
   validatePagination,
   studentController.getStudents
@@ -37,6 +37,7 @@ router.get(
 // GET /api/students/search - Search students
 router.get(
   "/search",
+  requireAuth,
   listCacheHeaders,
   validateSearchQuery,
   validatePagination,
@@ -46,6 +47,7 @@ router.get(
 // GET /api/students/status/:status - Get students by status
 router.get(
   "/status/:status",
+  requireAuth,
   listCacheHeaders,
   studentController.getStudentsByStatus
 );
@@ -63,7 +65,12 @@ router.get("/industries", studentController.getIndustries);
 router.get("/skills", studentController.getSkills);
 
 // GET /api/students/stats - Get student statistics
-router.get("/stats", studentController.getStudentStats);
+router.get(
+  "/stats",
+  requireAuth,
+  roleCheck(['admin', 'student', 'company']),
+  studentController.getStudentStats
+);
 
 // POST /api/students/validate-cv - Validate CV upload
 router.post("/validate-cv", studentController.validateCV);
@@ -74,6 +81,8 @@ router.post("/validate-photo", studentController.validatePhoto);
 // GET /api/students/:id - Get student by ID
 router.get(
   "/:id",
+  requireAuth,
+  roleCheck(['admin', 'student', 'company']),
   resourceCacheHeaders,
   validateStudentId,
   studentController.getStudentById
@@ -82,6 +91,8 @@ router.get(
 // POST /api/students - Create new student
 router.post(
   "/",
+  requireAuth,
+  roleCheck(['admin', 'student']),
   validateRequest(studentSchemas.create),
   studentController.createStudent
 );
@@ -89,6 +100,8 @@ router.post(
 // PUT /api/students/:id - Update student (full update)
 router.put(
   "/:id",
+  requireAuth,
+  roleCheck(['admin', 'student']),
   validateStudentId,
   validateRequest(studentSchemas.update),
   studentController.updateStudent
@@ -97,12 +110,20 @@ router.put(
 // PATCH /api/students/:id - Update student (partial update)
 router.patch(
   "/:id",
+  requireAuth,
+  roleCheck(['admin', 'student']),
   validateStudentId,
   validateRequest(studentSchemas.update),
   studentController.patchStudent
 );
 
 // DELETE /api/students/:id - Delete student
-router.delete("/:id", validateStudentId, studentController.deleteStudent);
+router.delete(
+  "/:id",
+  requireAuth,
+  roleCheck(['admin', 'student']),
+  validateStudentId,
+  studentController.deleteStudent
+);
 
 module.exports = router;
