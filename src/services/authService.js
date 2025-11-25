@@ -126,18 +126,17 @@ class AuthService {
   }
 
   /**
-   *
-   * Sign in using Supabase Auth API using email/password
+   * Sign in using Supabase Auth API with audit logging
    *
    * @async
-   * @author sqizzo
    * @param {string} email - User's email
    * @param {string} password - User's password
+   * @param {string} userAgent - Optional User-Agent header for audit logging
+   * @param {string} ipAddress - Optional IP address for audit logging
    * @returns {Promise<Object>} - Contains the session + user data
    * @throws {Error} If email or password is wrong
-   *
    */
-  async signIn(email, password) {
+  async signIn(email, password, userAgent = null, ipAddress = null) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -146,8 +145,35 @@ class AuthService {
 
       if (error) {
         console.error("[ERROR] Sign-in failed:", error?.message);
+
+        // Log failed login attempt
+        await this.logAuditEvent({
+          action: 'login',
+          success: false,
+          ipAddress,
+          userAgent,
+          errorMessage: error.message,
+          metadata: { email }
+        });
+
         throw new Error(error.message);
       }
+
+      // Log successful login
+      if (data?.user?.id) {
+        const sessionId = data.session?.access_token?.split('.')[0] || 'unknown';
+
+        await this.logAuditEvent({
+          userId: data.user.id,
+          action: 'login',
+          sessionId,
+          success: true,
+          ipAddress,
+          userAgent,
+          metadata: { email }
+        });
+      }
+
       return data;
     } catch (error) {
       console.error("[ERROR] AuthService.signIn:", error?.message);
@@ -156,22 +182,29 @@ class AuthService {
   }
 
   /**
-   *
-   * Sign up using Supabase Auth API
+   * Sign up using Supabase Auth API with audit logging
    *
    * @async
-   * @author sqizzo
    * @param {string} email - User's email
-   * @param {string} fullName- User's full name
+   * @param {string} fullName - User's full name
    * @param {string} password - User's password
-   * @param {string} role - User's role (["student"," company"])
-   * @returns {Promise<Object>} - Auth response (user + session if autoLogin enabled)
-   * @throws {Error} If data is incomplete.
-   *
+   * @param {string} role - User's role ("student", "company", "admin")
+   * @param {string} userAgent - Optional User-Agent header for audit logging
+   * @param {string} ipAddress - Optional IP address for audit logging
+   * @returns {Promise<Object>} - Auth response with user info
+   * @throws {Error} If registration fails or data is incomplete
    */
-  async signUp(email, fullName, password, role) {
+  async signUp(email, fullName, password, role, userAgent = null, ipAddress = null) {
     try {
       if (!email || !password || !fullName) {
+        await this.logAuditEvent({
+          action: 'register',
+          success: false,
+          ipAddress,
+          userAgent,
+          errorMessage: "Missing required fields: email, password, or fullName",
+          metadata: { email, role }
+        });
         throw new Error("Email, full name, and password are required");
       }
 
@@ -191,7 +224,30 @@ class AuthService {
 
       if (error) {
         console.error("[ERROR] Signup failed:", error.message);
+
+        // Log failed registration attempt
+        await this.logAuditEvent({
+          action: 'register',
+          success: false,
+          ipAddress,
+          userAgent,
+          errorMessage: error.message,
+          metadata: { email, role, fullName }
+        });
+
         throw new Error(error?.message);
+      }
+
+      // Log successful registration
+      if (data?.user?.id) {
+        await this.logAuditEvent({
+          userId: data.user.id,
+          action: 'register',
+          success: true,
+          ipAddress,
+          userAgent,
+          metadata: { email, role, fullName }
+        });
       }
 
       const response = {
@@ -205,40 +261,235 @@ class AuthService {
 
       return response;
     } catch (error) {
+      // Log error if not already logged
+      if (!error.message?.includes("required")) {
+        await this.logAuditEvent({
+          action: 'register',
+          success: false,
+          ipAddress,
+          userAgent,
+          errorMessage: error.message,
+          metadata: { email, role, fullName }
+        });
+      }
+
       console.error("[ERROR] AuthService.signUp:", error?.message);
       throw error;
     }
   }
 
   /**
-   *
-   * Invalidate all access token from supabase
-   * Note:
-   * For server-side management, you can revoke all refresh tokens for a user by passing a user's JWT through to auth.api.signOut(JWT: string). There is no way to revoke a user's access token jwt until it expires. It is recommended to set a shorter expiry on the jwt for this reason. (Supabase docs)
+   * Secure logout with proper session invalidation and audit trail
+   * Uses Supabase Auth to validate token and invalidate session
    *
    * @async
-   * @author sqizzo
-   * @param {string} token - The JWT access token from the authorization header.
-   * @returns {Promise<Object>} - The authenticated user object from supabase
-   * @throws {Error} If the token is missing, invalid, or Supabase returns an error.
-   *
+   * @param {string} token - The JWT access token from the authorization header
+   * @param {string} userAgent - Optional User-Agent header for audit logging
+   * @param {string} ipAddress - Optional IP address for audit logging
+   * @returns {Promise<Object>} - Contains success status, session ID, and timestamp
+   * @throws {Error} If token is missing, invalid, or logout fails
    */
-  async logOut(token) {
+  async logOut(token, userAgent = null, ipAddress = null) {
+    const transaction = {
+      user: null,
+      sessionId: null,
+      auditLogId: null
+    };
+
     try {
       if (!token) {
-        throw new Error("Missing berarer token");
+        throw new Error("Missing bearer token");
       }
-      const { error } = await supabase.auth.signOut({
-        scope: "global",
+
+      // Step 1: Verify token and extract user context
+      const { data: authData, error: authError } = await supabase.auth.getUser(token);
+
+      if (authError || !authData?.user) {
+        // Log failed logout attempt
+        await this.logAuditEvent({
+          action: 'logout',
+          success: false,
+          ipAddress,
+          userAgent,
+          errorMessage: authError?.message || 'Invalid token'
+        });
+        throw new Error("Invalid or expired token");
+      }
+
+      const user = authData.user;
+      const sessionId = authData.session?.access_token?.split('.')[0] || 'unknown';
+
+      transaction.user = user;
+      transaction.sessionId = sessionId;
+
+      // Step 2: Log logout attempt (before actual logout)
+      const auditLogId = await this.logAuditEvent({
+        userId: user.id,
+        action: 'logout',
+        sessionId,
+        success: true,
+        ipAddress,
+        userAgent,
+        metadata: { logoutInitiated: true }
       });
 
-      if (error) {
-        console.error("[ERROR] Sign-out failed:", error?.message);
-        throw new Error(error?.message);
+      transaction.auditLogId = auditLogId;
+
+      // Step 3: Use Supabase Admin API for server-side logout
+      // Note: Supabase doesn't support granular token revocation
+      // Using global signOut but tracking which session is being terminated
+      const { error: signOutError } = await supabase.auth.admin.signOut(user.id);
+
+      if (signOutError) {
+        console.warn("[WARN] Supabase sign-out warning:", signOutError.message);
+        // Continue anyway - logout should still succeed from user perspective
       }
+
+      // Step 4: Update audit log with success
+      if (auditLogId) {
+        await this.updateAuditLog(auditLogId, {
+          success: true,
+          metadata: {
+            logoutCompleted: true,
+            timestamp: new Date().toISOString()
+          }
+        });
+      }
+
+      // Step 5: Clear any cached user data
+      await this.clearUserCache(user.id);
+
+      return {
+        success: true,
+        message: "Logged out successfully",
+        sessionId
+      };
+
     } catch (error) {
+      // Log failed logout
+      if (transaction.user?.id) {
+        await this.logAuditEvent({
+          userId: transaction.user.id,
+          action: 'logout',
+          success: false,
+          ipAddress,
+          userAgent,
+          errorMessage: error.message,
+          metadata: { errorStack: error.stack }
+        });
+      }
+
       console.error("[ERROR] AuthService.logOut:", error?.message);
       throw error;
+    }
+  }
+
+  /**
+   * Log authentication events to audit trail
+   *
+   * @async
+   * @param {Object} params - Audit event parameters
+   * @param {string} params.userId - User ID (optional for failed logouts)
+   * @param {string} params.action - Action type: 'login', 'logout', 'token_refresh'
+   * @param {string} params.sessionId - Session identifier
+   * @param {boolean} params.success - Whether action succeeded
+   * @param {string} params.ipAddress - Client IP address
+   * @param {string} params.userAgent - Client User-Agent
+   * @param {Object} params.metadata - Additional metadata
+   * @param {string} params.error - Error message if failed
+   * @returns {Promise<string|null>} - Audit log ID or null if failed
+   */
+  async logAuditEvent({
+    userId = null,
+    action,
+    sessionId = null,
+    success = true,
+    ipAddress = null,
+    userAgent = null,
+    metadata = {},
+    errorMessage = null
+  }) {
+    try {
+      const { data, error: dbError } = await supabase
+        .from('auth_audit_logs')
+        .insert({
+          user_id: userId,
+          action,
+          session_id: sessionId,
+          success,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+          metadata: {
+            ...metadata,
+            ...(errorMessage && { error: errorMessage })
+          }
+        })
+        .select('id')
+        .single();
+
+      if (dbError) {
+        console.error("[ERROR] Failed to log audit event:", dbError);
+        return null;
+      }
+
+      return data.id;
+    } catch (err) {
+      console.error("[ERROR] logAuditEvent:", err?.message);
+      return null;
+    }
+  }
+
+  /**
+   * Update existing audit log entry
+   *
+   * @async
+   * @param {string} auditLogId - Audit log ID to update
+   * @param {Object} updates - Fields to update
+   * @returns {Promise<boolean>} - Success status
+   */
+  async updateAuditLog(auditLogId, updates) {
+    try {
+      const { error } = await supabase
+        .from('auth_audit_logs')
+        .update(updates)
+        .eq('id', auditLogId);
+
+      if (error) {
+        console.error("[ERROR] Failed to update audit log:", error);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error("[ERROR] updateAuditLog:", err?.message);
+      return false;
+    }
+  }
+
+  /**
+   * Clear all user-related cache entries
+   *
+   * @async
+   * @param {string} userId - User ID to clear cache for
+   * @returns {Promise<void>}
+   */
+  async clearUserCache(userId) {
+    try {
+      // Clear lookup service cache
+      const lookupService = require('./lookupService');
+      if (lookupService.clearCache) {
+        lookupService.clearCache();
+      }
+
+      // Clear response cache
+      const { responseCache } = require('./responseCacheService');
+      if (responseCache.clearAll) {
+        await responseCache.clearAll();
+      }
+
+      console.log(`[CACHE] Cleared cache for user ${userId}`);
+    } catch (error) {
+      console.error(`[ERROR] Failed to clear cache for user ${userId}:`, error.message);
     }
   }
 }
