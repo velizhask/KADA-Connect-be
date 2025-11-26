@@ -83,7 +83,7 @@ class CompanyService {
       const cacheKey = 'getCompanyById';
       const cachedResponse = responseCache.getAPIResponse(cacheKey, { id });
 
-      if (cachedResponse && cachedResponse.data.user_id) {
+      if (cachedResponse && cachedResponse.data.id) {
         return cachedResponse.data;
       }
 
@@ -91,7 +91,6 @@ class CompanyService {
         .from('companies')
         .select(`
           id,
-          user_id,
           company_name,
           company_summary_description,
           industry_sector,
@@ -116,9 +115,6 @@ class CompanyService {
       }
 
       const transformedData = this.transformCompanyDataPublic(data);
-
-      // For internal use (authorization checks), attach user_id to the public data
-      transformedData.user_id = data.user_id;
 
       // Cache the individual company response
       responseCache.setAPIResponse(cacheKey, { id }, transformedData);
@@ -290,7 +286,6 @@ class CompanyService {
         .insert([dbData])
         .select(`
           id,
-          user_id,
           company_name,
           company_summary_description,
           industry_sector,
@@ -325,11 +320,12 @@ class CompanyService {
 
   async updateCompany(id, updateData) {
     try {
+      console.log('[DEBUG CompanyService.updateCompany] ID:', id);
+      console.log('[DEBUG CompanyService.updateCompany] Update data received:', updateData);
+
       // Transform camelCase input to snake_case for database
       const dbData = this.transformCompanyDataForDB(updateData);
-
-      // Debug: Log the data being sent to Supabase
-      // console.log('[DEBUG] updateCompany data:', { id, dbData });
+      console.log('[DEBUG CompanyService.updateCompany] Transformed data for DB:', dbData);
 
       const { data, error } = await supabase
         .from('companies')
@@ -351,8 +347,14 @@ class CompanyService {
         `)
         .single();
 
+      console.log('[DEBUG CompanyService.updateCompany] Supabase query result:');
+      console.log('[DEBUG CompanyService.updateCompany] Data:', data);
+      console.log('[DEBUG CompanyService.updateCompany] Error:', error);
+
       if (error) {
+        console.log('[DEBUG CompanyService.updateCompany] Error code:', error.code);
         if (error.code === 'PGRST116') {
+          console.log('[DEBUG CompanyService.updateCompany] Company not found, returning null');
           return null; // Company not found
         }
         console.error('[ERROR] Failed to update company:', error.message);
@@ -365,7 +367,10 @@ class CompanyService {
       // Clear cache to ensure updated company appears immediately
       responseCache.clearByTable('companies', id);
 
+      console.log('[DEBUG CompanyService.updateCompany] About to transform data:', data);
       const transformedData = this.transformCompanyData(data);
+      console.log('[DEBUG CompanyService.updateCompany] Transformed data:', transformedData);
+      console.log('[DEBUG CompanyService.updateCompany] Returning transformed data');
       return transformedData;
     } catch (error) {
       console.error('[ERROR] CompanyService.updateCompany:', error.message);
@@ -474,24 +479,19 @@ class CompanyService {
       'company_name': companyData.companyName,
       'company_summary_description': companyData.companySummary,
       'industry_sector': companyData.industry,
-      'company_website_link': companyData.companyWebsite || null,
-      'company_logo': companyData.companyLogo || null,
+      'company_website_link': companyData.companyWebsite || companyData.website || null,
+      'company_logo': companyData.companyLogo || companyData.logo || null,
       'tech_roles_interest': companyData.techRoles || null,
       'preferred_skillsets': companyData.preferredSkillsets || null,
-      'contact_person_name': companyData.contactPersonName || null,
-      'contact_email': companyData.contactEmailAddress || null,
-      'contact_phone_number': companyData.contactPhoneNumber || null,
-      'contact_info_visible': companyData.visibleContactInfo ? 'Yes' : 'No'
+      'contact_person_name': companyData.contactPersonName || companyData.contactPerson || null,
+      'contact_email': companyData.contactEmailAddress || companyData.contactEmail || null,
+      'contact_phone_number': companyData.contactPhoneNumber || companyData.contactPhone || null,
+      'contact_info_visible': (companyData.visibleContactInfo || companyData.contactInfoVisible) ? 'Yes' : 'No'
     };
 
     // Only include email_address if it exists (handle potential missing field)
     if (companyData.emailAddress !== undefined) {
       dbData['email_address'] = companyData.emailAddress;
-    }
-
-    // Include user_id if provided (for ownership tracking)
-    if (companyData.user_id) {
-      dbData['user_id'] = companyData.user_id;
     }
 
     return dbData;
@@ -516,8 +516,16 @@ class CompanyService {
     if (patchData.companyWebsite !== undefined) {
       dbData['company_website_link'] = patchData.companyWebsite || null;
     }
+    // Accept simplified field name too
+    if (patchData.website !== undefined) {
+      dbData['company_website_link'] = patchData.website || null;
+    }
     if (patchData.companyLogo !== undefined) {
       dbData['company_logo'] = patchData.companyLogo || null;
+    }
+    // Accept simplified field name too
+    if (patchData.logo !== undefined) {
+      dbData['company_logo'] = patchData.logo || null;
     }
     if (patchData.techRoles !== undefined) {
       // Ensure tech roles is always a string to avoid JSON conflicts
@@ -530,14 +538,30 @@ class CompanyService {
     if (patchData.contactPersonName !== undefined) {
       dbData['contact_person_name'] = patchData.contactPersonName || null;
     }
+    // Accept simplified field name too
+    if (patchData.contactPerson !== undefined) {
+      dbData['contact_person_name'] = patchData.contactPerson || null;
+    }
     if (patchData.contactEmailAddress !== undefined) {
       dbData['contact_email'] = patchData.contactEmailAddress || null;
+    }
+    // Accept simplified field name too
+    if (patchData.contactEmail !== undefined) {
+      dbData['contact_email'] = patchData.contactEmail || null;
     }
     if (patchData.contactPhoneNumber !== undefined) {
       dbData['contact_phone_number'] = patchData.contactPhoneNumber || null;
     }
+    // Accept simplified field name too
+    if (patchData.contactPhone !== undefined) {
+      dbData['contact_phone_number'] = patchData.contactPhone || null;
+    }
     if (patchData.visibleContactInfo !== undefined) {
       dbData['contact_info_visible'] = patchData.visibleContactInfo ? 'Yes' : 'No';
+    }
+    // Accept simplified field name too
+    if (patchData.contactInfoVisible !== undefined) {
+      dbData['contact_info_visible'] = patchData.contactInfoVisible ? 'Yes' : 'No';
     }
 
     return dbData;

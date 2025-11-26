@@ -2,12 +2,17 @@ const { supabase } = require('../db');
 const { responseCache } = require('./responseCacheService');
 
 class StudentService {
-  async getAllStudents(filters = {}) {
+  async getAllStudents(filters = {}, currentUser = null) {
     try {
       // Add employment status to filters for proper cache key generation
+      // Admin users can see all students, others only "Open to work"
+      const isAdmin = currentUser && currentUser.role === 'admin';
+      const employmentFilter = isAdmin ? undefined : 'Open to work';
+
       const cacheFilters = {
         ...filters,
-        employmentStatus: 'Open to work' // Include employment status in cache key
+        employmentStatus: employmentFilter || 'all',
+        currentUserId: currentUser?.id || 'anonymous'
       };
 
       // Check cache first for list responses
@@ -59,8 +64,11 @@ class StudentService {
         query = query.ilike('tech_stack_skills', `%${filters.skills}%`);
       }
 
-      // Filter out employed students - only show "Open to work" students
-      query = query.eq('employment_status', 'Open to work');
+      // Filter employed students - only show "Open to work" students for non-admin users
+      // Admin users can see all students
+      if (employmentFilter) {
+        query = query.eq('employment_status', employmentFilter);
+      }
 
       // Apply pagination
       const page = parseInt(filters.page) || 1;
@@ -101,17 +109,19 @@ class StudentService {
     }
   }
 
-  async getStudentById(id) {
+  async getStudentById(id, currentUser = null) {
     try {
       // Check cache first for individual student
+      // Cache key should include current user info to handle different access levels
       const cacheKey = 'getStudentById';
       const cacheParams = {
         id,
+        currentUserId: currentUser?.id || 'anonymous',
         employmentStatus: 'Open to work' // Include employment status in cache key
       };
       const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheParams);
 
-      if (cachedResponse && cachedResponse.data.user_id) {
+      if (cachedResponse && cachedResponse.data.id) {
         return cachedResponse.data;
       }
 
@@ -119,7 +129,6 @@ class StudentService {
         .from('students')
         .select(`
           id,
-          user_id,
           "full_name",
           status,
           employment_status,
@@ -146,14 +155,21 @@ class StudentService {
         throw new Error('Failed to fetch student');
       }
 
-      // Check if student is employed - if so, don't return their data
-      if (data['employment_status'] === 'Employed') {
-        return null; // Hide employed students
+      // Check if student is employed
+      // Allow access if:
+      // 1. Current user is the student themselves
+      // 2. Current user is an admin
+      // 3. Employment status is "Open to work"
+      const isEmployed = data['employment_status'] === 'Employed';
+      const isOwnData = currentUser && data.id === currentUser.id;
+      const isAdmin = currentUser && currentUser.role === 'admin';
+
+      if (isEmployed && !isOwnData && !isAdmin) {
+        return null; // Hide employed students from others
       }
 
-      // For internal use (authorization checks), attach user_id to the public data
+      // Transform data for public API
       const transformedData = this.transformStudentDataPublic(data);
-      transformedData.user_id = data.user_id;
 
       // Cache the individual student response
       responseCache.setAPIResponse(cacheKey, cacheParams, transformedData);
@@ -345,10 +361,13 @@ class StudentService {
         throw new Error('Failed to fetch industries');
       }
 
-      // Get unique industries and sort them
-      const industries = [...new Set(data.map(item => item['preferred_industry']))]
-        .filter(Boolean)
-        .sort();
+      // Split industries by common delimiters and get unique values
+      const allIndustries = data.map(item => {
+        const industries = item['preferred_industry'] || '';
+        return industries.split(/[,\/\n|]/).map(industry => industry.trim()).filter(Boolean);
+      }).flat();
+
+      const industries = [...new Set(allIndustries)].sort();
 
       return industries;
     } catch (error) {
@@ -462,7 +481,6 @@ class StudentService {
         .insert([dbData])
         .select(`
           id,
-          user_id,
           "full_name",
           status,
           employment_status,
@@ -500,8 +518,12 @@ class StudentService {
 
   async updateStudent(id, updateData) {
     try {
+      console.log('[DEBUG StudentService.updateStudent] ID:', id);
+      console.log('[DEBUG StudentService.updateStudent] Update data received:', updateData);
+
       // Transform camelCase input to snake_case for database
       const dbData = this.transformStudentDataForDB(updateData);
+      console.log('[DEBUG StudentService.updateStudent] Transformed data for DB:', dbData);
 
       const { data, error } = await supabase
         .from('students')
@@ -526,8 +548,14 @@ class StudentService {
         `)
         .single();
 
+      console.log('[DEBUG StudentService.updateStudent] Supabase query result:');
+      console.log('[DEBUG StudentService.updateStudent] Data:', data);
+      console.log('[DEBUG StudentService.updateStudent] Error:', error);
+
       if (error) {
+        console.log('[DEBUG StudentService.updateStudent] Error code:', error.code);
         if (error.code === 'PGRST116') {
+          console.log('[DEBUG StudentService.updateStudent] Student not found, returning null');
           return null; // Student not found
         }
         console.error('[ERROR] Failed to update student:', error.message);
@@ -544,7 +572,10 @@ class StudentService {
         responseCache.clearByTable('students', id);
       }
 
+      console.log('[DEBUG StudentService.updateStudent] About to transform data:', data);
       const transformedData = this.transformStudentData(data);
+      console.log('[DEBUG StudentService.updateStudent] Transformed data:', transformedData);
+      console.log('[DEBUG StudentService.updateStudent] Returning transformed data');
       return transformedData;
     } catch (error) {
       console.error('[ERROR] StudentService.updateStudent:', error.message);
@@ -658,13 +689,8 @@ class StudentService {
       'profile_photo': studentData.profilePhoto || null,
       'linkedin': studentData.linkedin || null,
       'portfolio_link': studentData.portfolioLink || null,
-      'phone_number': studentData.phoneNumber ? parseInt(studentData.phoneNumber) : null
+      'phone_number': (studentData.phoneNumber || studentData.phone) ? parseInt(studentData.phoneNumber || studentData.phone) : null
     };
-
-    // Include user_id if provided (for ownership tracking)
-    if (studentData.user_id) {
-      dbData['user_id'] = studentData.user_id;
-    }
 
     return dbData;
   }
@@ -712,6 +738,10 @@ class StudentService {
     }
     if (patchData.phoneNumber !== undefined) {
       dbData['phone_number'] = patchData.phoneNumber ? parseInt(patchData.phoneNumber) : null;
+    }
+    // Accept simplified field name too
+    if (patchData.phone !== undefined) {
+      dbData['phone_number'] = patchData.phone ? parseInt(patchData.phone) : null;
     }
 
     return dbData;

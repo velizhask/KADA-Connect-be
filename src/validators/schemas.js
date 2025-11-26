@@ -21,11 +21,17 @@ const companySchemas = {
       "string.max": "Industry cannot exceed 100 characters",
       "any.required": "Industry is required",
     }),
+    website: Joi.string().uri().optional().messages({
+      "string.uri": "Website must be a valid URL",
+    }),
     companyWebsite: Joi.string().uri().optional().messages({
-      "string.uri": "Company website must be a valid URL",
+      "string.uri": "Website must be a valid URL",
+    }),
+    logo: Joi.string().uri().optional().messages({
+      "string.uri": "Logo must be a valid URL",
     }),
     companyLogo: Joi.string().uri().optional().messages({
-      "string.uri": "Company logo must be a valid URL",
+      "string.uri": "Logo must be a valid URL",
     }),
     techRoles: Joi.string().max(500).optional().messages({
       "string.max": "Tech roles cannot exceed 500 characters",
@@ -33,18 +39,31 @@ const companySchemas = {
     preferredSkillsets: Joi.string().max(1000).optional().messages({
       "string.max": "Preferred skillsets cannot exceed 1000 characters",
     }),
+    contactPerson: Joi.string().min(1).max(100).optional().messages({
+      "string.min": "Contact person name cannot be empty",
+      "string.max": "Contact person name cannot exceed 100 characters",
+    }),
     contactPersonName: Joi.string().min(1).max(100).optional().messages({
       "string.min": "Contact person name cannot be empty",
       "string.max": "Contact person name cannot exceed 100 characters",
     }),
+    contactEmail: Joi.string().email().optional().messages({
+      "string.email": "Contact email must be a valid email",
+    }),
     contactEmailAddress: Joi.string().email().optional().messages({
-      "string.email": "Contact email address must be a valid email",
+      "string.email": "Contact email must be a valid email",
+    }),
+    contactPhone: Joi.string().max(20).optional().messages({
+      "string.max": "Contact phone number cannot exceed 20 characters",
     }),
     contactPhoneNumber: Joi.string().max(20).optional().messages({
       "string.max": "Contact phone number cannot exceed 20 characters",
     }),
+    contactInfoVisible: Joi.boolean().optional().default(false).messages({
+      "boolean.base": "Contact info visible must be a boolean",
+    }),
     visibleContactInfo: Joi.boolean().optional().default(false).messages({
-      "boolean.base": "Visible contact info must be a boolean",
+      "boolean.base": "Contact info visible must be a boolean",
     }),
   }),
 
@@ -64,11 +83,11 @@ const companySchemas = {
       "string.min": "Industry cannot be empty",
       "string.max": "Industry cannot exceed 100 characters",
     }),
-    companyWebsite: Joi.string().uri().allow(null, "").optional().messages({
-      "string.uri": "Company website must be a valid URL",
+    website: Joi.string().uri().allow(null, "").optional().messages({
+      "string.uri": "Website must be a valid URL",
     }),
-    companyLogo: Joi.string().uri().allow(null, "").optional().messages({
-      "string.uri": "Company logo must be a valid URL",
+    logo: Joi.string().uri().allow(null, "").optional().messages({
+      "string.uri": "Logo must be a valid URL",
     }),
     techRoles: Joi.string().max(500).allow(null, "").optional().messages({
       "string.max": "Tech roles cannot exceed 500 characters",
@@ -80,7 +99,7 @@ const companySchemas = {
       .messages({
         "string.max": "Preferred skillsets cannot exceed 1000 characters",
       }),
-    contactPersonName: Joi.string()
+    contactPerson: Joi.string()
       .min(1)
       .max(100)
       .allow(null, "")
@@ -89,12 +108,12 @@ const companySchemas = {
         "string.min": "Contact person name cannot be empty",
         "string.max": "Contact person name cannot exceed 100 characters",
       }),
-    contactEmailAddress: Joi.string()
+    contactEmail: Joi.string()
       .email()
       .allow(null, "")
       .optional()
       .messages({
-        "string.email": "Contact email address must be a valid email",
+        "string.email": "Contact email must be a valid email",
       }),
     contactPhoneNumber: Joi.string()
       .max(20)
@@ -103,8 +122,15 @@ const companySchemas = {
       .messages({
         "string.max": "Contact phone number cannot exceed 20 characters",
       }),
-    visibleContactInfo: Joi.boolean().optional().messages({
-      "boolean.base": "Visible contact info must be a boolean",
+    contactPhone: Joi.string()
+      .max(20)
+      .allow(null, "")
+      .optional()
+      .messages({
+        "string.max": "Contact phone number cannot exceed 20 characters",
+      }),
+    contactInfoVisible: Joi.boolean().optional().messages({
+      "boolean.base": "Contact info visible must be a boolean",
     }),
   })
     .min(1)
@@ -175,6 +201,9 @@ const studentSchemas = {
     phoneNumber: Joi.string().max(20).optional().messages({
       "string.max": "Phone number cannot exceed 20 characters",
     }),
+    phone: Joi.string().max(20).optional().messages({
+      "string.max": "Phone number cannot exceed 20 characters",
+    }),
   }),
 
   update: Joi.object({
@@ -228,6 +257,9 @@ const studentSchemas = {
       "string.uri": "Portfolio link must be a valid URL",
     }),
     phoneNumber: Joi.string().max(20).allow(null, "").optional().messages({
+      "string.max": "Phone number cannot exceed 20 characters",
+    }),
+    phone: Joi.string().max(20).allow(null, "").optional().messages({
       "string.max": "Phone number cannot exceed 20 characters",
     }),
   })
