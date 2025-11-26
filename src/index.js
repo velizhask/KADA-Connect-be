@@ -91,6 +91,7 @@ const companyRoutes = require("./routes/companies");
 const studentRoutes = require("./routes/students");
 const lookupRoutes = require("./routes/lookup");
 const authRoutes = require("./routes/auth");
+const authMeRoutes = require("./routes/authMe");
 
 // Import middleware
 const {
@@ -190,6 +191,7 @@ app.get("/api/docs", (req, res) => {
 app.use("/api/companies", companyRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/auth/me", authMeRoutes);
 app.use("/api", lookupRoutes);
 
 // 404 handler

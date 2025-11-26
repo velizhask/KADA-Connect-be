@@ -34,10 +34,8 @@ coverage/
 CLAUDE.md
 prd.md
 /docs
-/docs/POSTMAN-USAGE.md
-/docs/test-google-drive-proxy.js
-/docs/documentation.md
-/collection/KADA-Connect-Staging-Environment.postman_environment.json
+/db
+
 
 # Dependency directories
 node_modules/
