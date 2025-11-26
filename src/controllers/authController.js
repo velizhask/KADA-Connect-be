@@ -55,12 +55,24 @@ class AuthController {
         });
       }
 
+      // Sign in user using Supabase Auth
       const response = await authService.signIn(email, password, userAgent, ipAddress);
+
+      // Supabase Auth handles tokens automatically:
+      // - access_token: 1 hour expiration
+      // - refresh_token: automatic renewal
+      // - session management: built-in
 
       return res.status(200).json({
         success: true,
         message: "Login successful",
-        accessToken: response.session.access_token,
+        data: {
+          access_token: response.session.access_token,
+          refresh_token: response.session.refresh_token, // Supabase's built-in refresh token
+          expires_in: response.session.expires_in || 3600, // 1 hour (Supabase default)
+          user: response.user,
+          token_type: 'bearer'
+        }
       });
     } catch (error) {
       next(error);

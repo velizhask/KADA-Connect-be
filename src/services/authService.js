@@ -248,6 +248,46 @@ class AuthService {
           userAgent,
           metadata: { email, role, fullName }
         });
+
+        // EMAIL SYNC: Check if profile exists with this email and sync IDs
+        try {
+          if (role === 'student') {
+            // Check if student profile exists with this email
+            const { data: existingStudent, error: studentError } = await supabase
+              .from('students')
+              .select('id, email_address')
+              .eq('email_address', email)
+              .single();
+
+            if (!studentError && existingStudent) {
+              // Update student profile with new auth user ID
+              console.log(`[INFO] Syncing student profile ${existingStudent.id} with auth user ${data.user.id}`);
+              await supabase
+                .from('students')
+                .update({ id: data.user.id })
+                .eq('email_address', email);
+            }
+          } else if (role === 'company') {
+            // Check if company profile exists with this email
+            const { data: existingCompany, error: companyError } = await supabase
+              .from('companies')
+              .select('id, email_address')
+              .eq('email_address', email)
+              .single();
+
+            if (!companyError && existingCompany) {
+              // Update company profile with new auth user ID
+              console.log(`[INFO] Syncing company profile ${existingCompany.id} with auth user ${data.user.id}`);
+              await supabase
+                .from('companies')
+                .update({ id: data.user.id })
+                .eq('email_address', email);
+            }
+          }
+        } catch (syncError) {
+          console.error('[ERROR] Email sync failed:', syncError.message);
+          // Continue with registration even if sync fails
+        }
       }
 
       const response = {
@@ -335,14 +375,26 @@ class AuthService {
 
       transaction.auditLogId = auditLogId;
 
-      // Step 3: Use Supabase Admin API for server-side logout
-      // Note: Supabase doesn't support granular token revocation
-      // Using global signOut but tracking which session is being terminated
-      const { error: signOutError } = await supabase.auth.admin.signOut(user.id);
+      // Step 3: Sign out using the session's refresh token
+      // This properly invalidates the session and all associated tokens
+      if (authData.session?.refresh_token) {
+        const { error: signOutError } = await supabase.auth.signOut(
+          authData.session.refresh_token
+        );
 
-      if (signOutError) {
-        console.warn("[WARN] Supabase sign-out warning:", signOutError.message);
-        // Continue anyway - logout should still succeed from user perspective
+        if (signOutError) {
+          console.warn("[WARN] Session sign-out warning:", signOutError.message);
+        } else {
+          console.log(`[AUTH] Successfully signed out session for user ${user.id}`);
+        }
+      } else {
+        // Fallback: Use admin signOut for all sessions
+        console.log(`[AUTH] No refresh token found, using admin signOut for user ${user.id}`);
+        const { error: adminSignOutError } = await supabase.auth.admin.signOut(user.id);
+
+        if (adminSignOutError) {
+          console.warn("[WARN] Admin sign-out warning:", adminSignOutError.message);
+        }
       }
 
       // Step 4: Update audit log with success
@@ -362,7 +414,8 @@ class AuthService {
       return {
         success: true,
         message: "Logged out successfully",
-        sessionId
+        sessionId,
+        userId: user.id
       };
 
     } catch (error) {

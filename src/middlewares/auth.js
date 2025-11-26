@@ -53,6 +53,31 @@ function JWTAuth(required = true) {
       // Attach the authenticated user to the request
       // The user object includes id, email, and other auth metadata
       req.user = data.user;
+
+      // Extract role from public.users table (authoritative source)
+      try {
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", data.user.id)
+          .single();
+
+        if (!userError && userData && userData.role) {
+          // Add the role from database to req.user
+          req.user.role = userData.role;
+        } else {
+          console.warn(
+            `[WARN] User ${data.user.id} not found in users table or missing role`
+          );
+        }
+      } catch (roleError) {
+        console.error(
+          "[ERROR] Failed to fetch user role from database:",
+          roleError
+        );
+        // Continue without role - endpoints will handle accordingly
+      }
+
       return next();
     } catch (err) {
       console.error("[ERROR] verifyJWT Middleware:", err);
