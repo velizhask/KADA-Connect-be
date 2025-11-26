@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const companyController = require('../controllers/companyController');
+const companyFileController = require('../controllers/companyFileController');
 const { validateRequest } = require('../middlewares/validation');
 const { companySchemas } = require('../validators/schemas');
 const {
@@ -17,6 +18,7 @@ const {
 } = require('../middlewares/cacheHeaders');
 const { requireAuth } = require('../middlewares/auth');
 const roleCheck = require('../middlewares/roleCheck');
+const { uploadLogo, handleUploadError } = require('../middlewares/fileUpload');
 
 // Apply sanitization middleware to all routes
 router.use(sanitizeInput);
@@ -81,17 +83,7 @@ router.post(
   companyController.createCompany
 );
 
-// PUT /api/companies/:id - Update company (full update)
-router.put(
-  '/:id',
-  requireAuth,
-  roleCheck(['admin', 'company']),
-  validateCompanyId,
-  validateRequest(companySchemas.update),
-  companyController.updateCompany
-);
-
-// PATCH /api/companies/:id - Update company (partial update)
+// PATCH /api/companies/:id - Update company (partial update only)
 router.patch(
   '/:id',
   requireAuth,
@@ -108,6 +100,37 @@ router.delete(
   roleCheck(['admin', 'company']),
   validateCompanyId,
   companyController.deleteCompany
+);
+
+// ============== FILE UPLOAD ROUTES ==============
+
+// POST /api/companies/:id/logo - Upload company logo
+router.post(
+  '/:id/logo',
+  requireAuth,
+  roleCheck(['admin', 'company']),
+  validateCompanyId,
+  uploadLogo,
+  handleUploadError,
+  companyFileController.uploadLogo
+);
+
+// DELETE /api/companies/:id/logo - Delete company logo
+router.delete(
+  '/:id/logo',
+  requireAuth,
+  roleCheck(['admin', 'company']),
+  validateCompanyId,
+  companyFileController.deleteLogo
+);
+
+// GET /api/companies/:id/logo - Get company logo info
+router.get(
+  '/:id/logo',
+  requireAuth,
+  roleCheck(['admin', 'student', 'company']),
+  validateCompanyId,
+  companyFileController.getLogo
 );
 
 module.exports = router;

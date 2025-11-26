@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const studentController = require("../controllers/studentController");
+const studentFileController = require("../controllers/studentFileController");
 const { validateRequest } = require("../middlewares/validation");
 const { studentSchemas } = require("../validators/schemas");
 const {
@@ -17,6 +18,7 @@ const {
 const { requireAuth } = require("../middlewares/auth");
 const roleCheck = require("../middlewares/roleCheck");
 const { requireAdmin } = require("../middlewares/roleCheck");
+const { uploadCV, uploadPhoto, handleUploadError } = require("../middlewares/fileUpload");
 
 // Apply sanitization middleware to all routes
 router.use(sanitizeInput);
@@ -72,12 +74,6 @@ router.get(
   studentController.getStudentStats
 );
 
-// POST /api/students/validate-cv - Validate CV upload
-router.post("/validate-cv", studentController.validateCV);
-
-// POST /api/students/validate-photo - Validate profile photo
-router.post("/validate-photo", studentController.validatePhoto);
-
 // GET /api/students/:id - Get student by ID
 router.get(
   "/:id",
@@ -97,17 +93,7 @@ router.post(
   studentController.createStudent
 );
 
-// PUT /api/students/:id - Update student (full update)
-router.put(
-  "/:id",
-  requireAuth,
-  roleCheck(['admin', 'student']),
-  validateStudentId,
-  validateRequest(studentSchemas.update),
-  studentController.updateStudent
-);
-
-// PATCH /api/students/:id - Update student (partial update)
+// PATCH /api/students/:id - Update student (partial update only)
 router.patch(
   "/:id",
   requireAuth,
@@ -124,6 +110,66 @@ router.delete(
   roleCheck(['admin', 'student']),
   validateStudentId,
   studentController.deleteStudent
+);
+
+// ============== FILE UPLOAD ROUTES ==============
+
+// POST /api/students/:id/cv - Upload CV
+router.post(
+  "/:id/cv",
+  requireAuth,
+  roleCheck(['admin', 'student']),
+  validateStudentId,
+  uploadCV,
+  handleUploadError,
+  studentFileController.uploadCV
+);
+
+// POST /api/students/:id/photo - Upload profile photo
+router.post(
+  "/:id/photo",
+  requireAuth,
+  roleCheck(['admin', 'student']),
+  validateStudentId,
+  uploadPhoto,
+  handleUploadError,
+  studentFileController.uploadPhoto
+);
+
+// DELETE /api/students/:id/cv - Delete CV
+router.delete(
+  "/:id/cv",
+  requireAuth,
+  roleCheck(['admin', 'student']),
+  validateStudentId,
+  studentFileController.deleteCV
+);
+
+// DELETE /api/students/:id/photo - Delete profile photo
+router.delete(
+  "/:id/photo",
+  requireAuth,
+  roleCheck(['admin', 'student']),
+  validateStudentId,
+  studentFileController.deletePhoto
+);
+
+// GET /api/students/:id/cv - Get CV info
+router.get(
+  "/:id/cv",
+  requireAuth,
+  roleCheck(['admin', 'student', 'company']),
+  validateStudentId,
+  studentFileController.getCV
+);
+
+// GET /api/students/:id/photo - Get photo info
+router.get(
+  "/:id/photo",
+  requireAuth,
+  roleCheck(['admin', 'student', 'company']),
+  validateStudentId,
+  studentFileController.getPhoto
 );
 
 module.exports = router;

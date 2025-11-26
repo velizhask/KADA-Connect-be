@@ -36,14 +36,14 @@ class CompanyController {
     try {
       const { id } = req.params;
 
-      if (!id || isNaN(id)) {
+      if (!id) {
         return res.status(400).json({
           success: false,
           message: 'Invalid company ID'
         });
       }
 
-      const company = await companyService.getCompanyById(parseInt(id));
+      const company = await companyService.getCompanyById(id);
 
       if (!company) {
         return res.status(404).json({
@@ -167,7 +167,7 @@ class CompanyController {
       const { id } = req.params;
       const updateData = req.body;
 
-      if (!id || isNaN(id)) {
+      if (!id) {
         return res.status(400).json({
           success: false,
           message: 'Invalid company ID'
@@ -178,7 +178,7 @@ class CompanyController {
       const currentUser = req.user;
 
       // Check if user is admin or owns this company
-      const company = await companyService.getCompanyById(parseInt(id));
+      const company = await companyService.getCompanyById(id);
       if (!company) {
         return res.status(404).json({
           success: false,
@@ -206,7 +206,7 @@ class CompanyController {
         }
       }
 
-      const updatedCompany = await companyService.updateCompany(parseInt(id), updateData);
+      const updatedCompany = await companyService.updateCompany(id, updateData);
 
       res.status(200).json({
         success: true,
@@ -223,7 +223,7 @@ class CompanyController {
       const { id } = req.params;
       const patchData = req.body;
 
-      if (!id || isNaN(id)) {
+      if (!id) {
         return res.status(400).json({
           success: false,
           message: 'Invalid company ID'
@@ -242,7 +242,7 @@ class CompanyController {
       const currentUser = req.user;
 
       // Check if user is admin or owns this company
-      const company = await companyService.getCompanyById(parseInt(id));
+      const company = await companyService.getCompanyById(id);
       if (!company) {
         return res.status(404).json({
           success: false,
@@ -270,7 +270,7 @@ class CompanyController {
         }
       }
 
-      const patchedCompany = await companyService.patchCompany(parseInt(id), patchData);
+      const patchedCompany = await companyService.patchCompany(id, patchData);
 
       res.status(200).json({
         success: true,
@@ -286,7 +286,7 @@ class CompanyController {
     try {
       const { id } = req.params;
 
-      if (!id || isNaN(id)) {
+      if (!id) {
         return res.status(400).json({
           success: false,
           message: 'Invalid company ID'
@@ -298,7 +298,7 @@ class CompanyController {
       const userRole = await authService.getUserRole(currentUser);
 
       // Check if user is admin or owns this company
-      const company = await companyService.getCompanyById(parseInt(id));
+      const company = await companyService.getCompanyById(id);
       if (!company) {
         return res.status(404).json({
           success: false,
@@ -318,7 +318,7 @@ class CompanyController {
         });
       }
 
-      const result = await companyService.deleteCompany(parseInt(id));
+      const result = await companyService.deleteCompany(id);
 
       res.status(200).json({
         success: true,
