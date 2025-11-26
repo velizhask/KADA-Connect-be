@@ -53,10 +53,13 @@ const validatePagination = (req, res, next) => {
 const validateCompanyId = (req, res, next) => {
   const { id } = req.params;
 
-  if (!id || isNaN(id) || parseInt(id) < 1) {
+  // UUID v4 regex pattern
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  if (!id || !uuidRegex.test(id)) {
     return res.status(400).json({
       success: false,
-      message: 'Valid company ID is required',
+      message: 'Valid company ID (UUID) is required',
       data: null
     });
   }
@@ -67,10 +70,13 @@ const validateCompanyId = (req, res, next) => {
 const validateStudentId = (req, res, next) => {
   const { id } = req.params;
 
-  if (!id || isNaN(id) || parseInt(id) < 1) {
+  // UUID v4 regex pattern
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  if (!id || !uuidRegex.test(id)) {
     return res.status(400).json({
       success: false,
-      message: 'Valid student ID is required',
+      message: 'Valid student ID (UUID) is required',
       data: null
     });
   }
