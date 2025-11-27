@@ -507,7 +507,7 @@ class CompanyService {
       'contact_person_name': companyData.contactPersonName || companyData.contactPerson || null,
       'contact_email': companyData.contactEmailAddress || companyData.contactEmail || null,
       'contact_phone_number': companyData.contactPhoneNumber || companyData.contactPhone || null,
-      'contact_info_visible': (companyData.visibleContactInfo || companyData.contactInfoVisible) ? 'Yes' : 'No',
+      'contact_info_visible': (companyData.visibleContactInfo || companyData.contactInfoVisible) || false,
       'is_visible': companyData.isVisible !== undefined ? companyData.isVisible : true
     };
 
@@ -579,11 +579,11 @@ class CompanyService {
       dbData['contact_phone_number'] = patchData.contactPhone || null;
     }
     if (patchData.visibleContactInfo !== undefined) {
-      dbData['contact_info_visible'] = patchData.visibleContactInfo ? 'Yes' : 'No';
+      dbData['contact_info_visible'] = patchData.visibleContactInfo || false;
     }
     // Accept simplified field name too
     if (patchData.contactInfoVisible !== undefined) {
-      dbData['contact_info_visible'] = patchData.contactInfoVisible ? 'Yes' : 'No';
+      dbData['contact_info_visible'] = patchData.contactInfoVisible || false;
     }
     if (patchData.isVisible !== undefined) {
       dbData['is_visible'] = patchData.isVisible;
@@ -598,7 +598,7 @@ class CompanyService {
    * @returns {Object} Transformed company data without phone number
    */
   transformCompanyDataPublic(company) {
-    const isContactInfoVisible = company['contact_info_visible'] === 'Yes';
+    const isContactInfoVisible = company['contact_info_visible'] === true;
 
     return {
       id: company.id,
@@ -627,7 +627,7 @@ class CompanyService {
   }
 
   transformCompanyData(company) {
-    const isContactInfoVisible = company['contact_info_visible'] === 'Yes';
+    const isContactInfoVisible = company['contact_info_visible'] === true;
 
     return {
       id: company.id,

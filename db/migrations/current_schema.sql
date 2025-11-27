@@ -15,7 +15,7 @@ CREATE TABLE public.companies (
   contact_email text,
   contact_phone_number text,
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE CHECK (id > 0),
-  contact_info_visible text,
+  contact_info_visible boolean,
   company_logo_drive text,
   user_id uuid UNIQUE,
   CONSTRAINT companies_pkey PRIMARY KEY (id),
@@ -35,7 +35,7 @@ CREATE TABLE public.companies_backup (
   contact_email text,
   contact_phone_number text,
   id bigint,
-  contact_info_visible text,
+  contact_info_visible boolean,
   company_logo_drive text,
   user_id uuid
 );
