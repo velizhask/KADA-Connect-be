@@ -104,7 +104,7 @@ class StudentController {
         }
       });
 
-      const students = await studentService.searchStudents(q.trim(), filters);
+      const students = await studentService.searchStudents(q.trim(), filters, req.user);
 
       res.status(200).json({
         success: true,

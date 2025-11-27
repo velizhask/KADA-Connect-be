@@ -26,7 +26,8 @@ class CompanyService {
           contact_person_name,
           contact_email,
           contact_phone_number,
-          contact_info_visible
+          contact_info_visible,
+          is_visible
         `, { count: 'exact' });
 
       // Apply filters
@@ -37,6 +38,9 @@ class CompanyService {
       if (filters.techRole) {
         query = query.ilike('tech_roles_interest', `%${filters.techRole}%`);
       }
+
+      // Filter out invisible companies - only show visible ones
+      query = query.eq('is_visible', true);
 
       // Apply pagination
       const page = parseInt(filters.page) || 1;
@@ -101,7 +105,8 @@ class CompanyService {
           contact_person_name,
           contact_email,
           contact_phone_number,
-          contact_info_visible
+          contact_info_visible,
+          is_visible
         `)
         .eq('id', id)
         .single();
@@ -112,6 +117,11 @@ class CompanyService {
         }
         console.error('[ERROR] Failed to fetch company:', error.message);
         throw new Error('Failed to fetch company');
+      }
+
+      // Check if company is visible - return null if not visible
+      if (!data['is_visible']) {
+        return null; // Hide invisible companies
       }
 
       const transformedData = this.transformCompanyDataPublic(data);
@@ -149,7 +159,8 @@ class CompanyService {
           contact_person_name,
           contact_email,
           contact_phone_number,
-          contact_info_visible
+          contact_info_visible,
+          is_visible
         `);
 
       // Build dynamic OR conditions for multiple search terms
@@ -173,6 +184,9 @@ class CompanyService {
         query = query.ilike('tech_roles_interest', `%${filters.techRole}%`);
       }
 
+      // Filter out invisible companies - only show visible ones in search
+      query = query.eq('is_visible', true);
+
       const { data, error } = await query
         .order('company_name')
         .limit(50); // Limit search results
@@ -195,7 +209,8 @@ class CompanyService {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('industry_sector')
+        .select('industry_sector, is_visible')
+        .eq('is_visible', true) // Only include visible companies
         .not('industry_sector', 'is', null);
 
       if (error) {
@@ -219,7 +234,8 @@ class CompanyService {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('tech_roles_interest')
+        .select('tech_roles_interest, is_visible')
+        .eq('is_visible', true) // Only include visible companies
         .not('tech_roles_interest', 'is', null);
 
       if (error) {
@@ -246,7 +262,8 @@ class CompanyService {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('industry_sector, tech_roles_interest');
+        .select('industry_sector, tech_roles_interest')
+        .eq('is_visible', true); // Only include visible companies
 
       if (error) {
         console.error('[ERROR] Failed to fetch company stats:', error.message);
@@ -296,7 +313,8 @@ class CompanyService {
           contact_person_name,
           contact_email,
           contact_phone_number,
-          contact_info_visible
+          contact_info_visible,
+          is_visible
         `)
         .single();
 
@@ -343,7 +361,8 @@ class CompanyService {
           contact_person_name,
           contact_email,
           contact_phone_number,
-          contact_info_visible
+          contact_info_visible,
+          is_visible
         `)
         .single();
 
@@ -384,8 +403,8 @@ class CompanyService {
       const dbData = this.transformCompanyDataForDBPartial(patchData);
 
       // Debug: Log the data being sent to Supabase
-      // console.log('[DEBUG] patchCompany input:', { id, patchData });
-      // console.log('[DEBUG] transformed dbData:', dbData);
+      console.log('[DEBUG] patchCompany input:', { id, patchData });
+      console.log('[DEBUG] transformed dbData:', dbData);
 
       // Ensure we have some data to update
       if (Object.keys(dbData).length === 0) {
@@ -396,8 +415,8 @@ class CompanyService {
       const updatePromises = [];
       const keys = Object.keys(dbData);
 
-      // console.log('[DEBUG] About to call Supabase update with data:', dbData);
-      // console.log('[DEBUG] Keys to update:', keys);
+      console.log('[DEBUG] About to call Supabase update with data:', dbData);
+      console.log('[DEBUG] Keys to update:', keys);
 
       // Use the standard update method but with explicit type handling
       const { data, error } = await supabase
@@ -416,7 +435,8 @@ class CompanyService {
           contact_person_name,
           contact_email,
           contact_phone_number,
-          contact_info_visible
+          contact_info_visible,
+          is_visible
         `)
         .single();
 
@@ -430,7 +450,8 @@ class CompanyService {
         throw new Error(`Failed to patch company: ${error.message}`);
       }
 
-      // console.log('[SUCCESS] Company patched successfully with ID:', data.id);
+      console.log('[SUCCESS] Company patched successfully with ID:', data.id);
+      console.log('[SUCCESS] Returned data:', data);
 
       // Clear cache to ensure patched company appears immediately
       responseCache.clearByTable('companies', id);
@@ -486,7 +507,8 @@ class CompanyService {
       'contact_person_name': companyData.contactPersonName || companyData.contactPerson || null,
       'contact_email': companyData.contactEmailAddress || companyData.contactEmail || null,
       'contact_phone_number': companyData.contactPhoneNumber || companyData.contactPhone || null,
-      'contact_info_visible': (companyData.visibleContactInfo || companyData.contactInfoVisible) ? 'Yes' : 'No'
+      'contact_info_visible': (companyData.visibleContactInfo || companyData.contactInfoVisible) ? 'Yes' : 'No',
+      'is_visible': companyData.isVisible !== undefined ? companyData.isVisible : true
     };
 
     // Only include email_address if it exists (handle potential missing field)
@@ -563,6 +585,9 @@ class CompanyService {
     if (patchData.contactInfoVisible !== undefined) {
       dbData['contact_info_visible'] = patchData.contactInfoVisible ? 'Yes' : 'No';
     }
+    if (patchData.isVisible !== undefined) {
+      dbData['is_visible'] = patchData.isVisible;
+    }
 
     return dbData;
   }
@@ -587,7 +612,8 @@ class CompanyService {
       contactPerson: company['contact_person_name'],
       contactEmail: isContactInfoVisible ? company['contact_email'] : null,
       // Phone number excluded for public API privacy
-      contactInfoVisible: isContactInfoVisible
+      contactInfoVisible: isContactInfoVisible,
+      isVisible: company['is_visible']
     };
   }
 
@@ -615,7 +641,8 @@ class CompanyService {
       contactPerson: company['contact_person_name'],
       contactEmail: isContactInfoVisible ? company['contact_email'] : null,
       contactPhone: isContactInfoVisible ? company['contact_phone_number'] : null,
-      contactInfoVisible: isContactInfoVisible
+      contactInfoVisible: isContactInfoVisible,
+      isVisible: company['is_visible']
     };
   }
 

@@ -65,6 +65,9 @@ const companySchemas = {
     visibleContactInfo: Joi.boolean().optional().default(false).messages({
       "boolean.base": "Contact info visible must be a boolean",
     }),
+    isVisible: Joi.boolean().optional().default(true).messages({
+      "boolean.base": "isVisible must be a boolean",
+    }),
   }),
 
   update: Joi.object({
@@ -132,6 +135,12 @@ const companySchemas = {
     contactInfoVisible: Joi.boolean().optional().messages({
       "boolean.base": "Contact info visible must be a boolean",
     }),
+    visibleContactInfo: Joi.boolean().optional().messages({
+      "boolean.base": "Contact info visible must be a boolean",
+    }),
+    isVisible: Joi.boolean().optional().messages({
+      "boolean.base": "isVisible must be a boolean",
+    }),
   })
     .min(1)
     .messages({
@@ -161,6 +170,9 @@ const studentSchemas = {
           'Employment status must be either "Employed" or "Open to work"',
         "any.required": "Employment status is required",
       }),
+    batch: Joi.string().max(50).optional().messages({
+      "string.max": "Batch cannot exceed 50 characters",
+    }),
     university: Joi.string().min(1).max(100).required().messages({
       "string.min": "University cannot be empty",
       "string.max": "University cannot exceed 100 characters",
@@ -204,6 +216,9 @@ const studentSchemas = {
     phone: Joi.string().max(20).optional().messages({
       "string.max": "Phone number cannot exceed 20 characters",
     }),
+    isVisible: Joi.boolean().optional().default(true).messages({
+      "boolean.base": "isVisible must be a boolean",
+    }),
   }),
 
   update: Joi.object({
@@ -224,6 +239,9 @@ const studentSchemas = {
         "any.only":
           'Employment status must be either "Employed" or "Open to work"',
       }),
+    batch: Joi.string().max(50).optional().messages({
+      "string.max": "Batch cannot exceed 50 characters",
+    }),
     university: Joi.string().min(1).max(100).optional().messages({
       "string.min": "University cannot be empty",
       "string.max": "University cannot exceed 100 characters",
@@ -261,6 +279,9 @@ const studentSchemas = {
     }),
     phone: Joi.string().max(20).allow(null, "").optional().messages({
       "string.max": "Phone number cannot exceed 20 characters",
+    }),
+    isVisible: Joi.boolean().optional().messages({
+      "boolean.base": "isVisible must be a boolean",
     }),
   })
     .min(1)
