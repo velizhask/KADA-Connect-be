@@ -1,21 +1,355 @@
 # KADA Connect API Documentation
 
-## Base Configuration
+## Table of Contents
+1. [Quick Start](#quick-start)
+2. [Role-Based Access Control](#role-based-access-control)
+3. [Authentication](#authentication)
+4. [Current User Profile](#current-user-profile)
+5. [Companies API](#companies-api)
+6. [Students API](#students-api)
+7. [File Upload](#file-upload)
+8. [Error Handling](#error-handling)
+9. [Field Names Guide](#field-names-guide)
 
-- **Base URL**: `http://localhost:3001/api`
-- **Method**: REST
-- **Content-Type**: `application/json`
-- **Documentation Style**: Technical Reference
+---
 
-## Response Format
+## Quick Start
 
-### Success Response
-```json
+### Base Configuration
+```javascript
+const API_BASE_URL = 'http://localhost:3001/api';
+```
+
+### Standard Response Format
+```javascript
+// Success
 {
   "success": true,
   "message": "Operation successful",
-  "data": {},
-  "total": 0,
+  "data": { /* response data */ }
+}
+
+// Error
+{
+  "success": false,
+  "message": "Error description",
+  "data": null
+}
+```
+
+### Critical Notes for Frontend
+1. All endpoints require authentication (except login/register)
+2. All IDs are UUID v4 format (not numbers): `550e8400-e29b-41d4-a716-446655440000`
+3. Use PATCH for updates (PUT is disabled)
+4. File uploads use FormData (not JSON)
+
+---
+
+## Role-Based Access Control
+
+### Overview
+The API implements role-based access control with three user roles: **admin**, **student**, and **company**. Access to resources varies by role and is designed to facilitate networking while protecting privacy.
+
+### Roles and Permissions
+
+#### **ADMIN**
+**Full access to all resources**
+
+**Companies:**
+- Can view ALL companies (including invisible ones)
+- Can create, update, delete any company
+- Can view all company data including hidden fields
+
+**Students:**
+- Can view ALL students (including invisible ones)
+- Can create, update, delete any student
+- Can view all student data including hidden fields
+- Can see employment status for all students
+
+**Use Case:** Platform administrators managing the system
+
+---
+
+#### **STUDENT**
+**Networking-focused access**
+
+**Companies:**
+- Can view ALL visible companies
+- Cannot create/update/delete companies
+
+**Students:**
+- Can view ALL other students (both "Open to work" and "Employed")
+- Can view only VISIBLE students (isVisible = true)
+- Can search all students
+- Can view own profile even if invisible
+- Cannot view invisible profiles of other students
+
+**Use Case:** Students networking with peers, viewing company opportunities
+
+---
+
+#### **COMPANY**
+**Job-seeking focused access**
+
+**Companies:**
+- Can view and update own company profile
+- Can view ALL visible companies (other companies)
+
+**Students:**
+- Can view ONLY "Open to work" students
+- Cannot see "Employed" students (prevents poaching)
+- Can search only "Open to work" students
+- Cannot see invisible students (isVisible = false)
+- Can view ALL visible companies
+
+**Use Case:** Companies looking for job candidates
+
+
+---
+
+### Employment Status Filtering
+
+**"Open to work" students** are visible to:
+- All users (admin, student, company)
+
+**"Employed" students** are visible to:
+- Admin (full access)
+- Student role (for networking)
+
+### Visibility (isVisible) Field
+
+The `isVisible` field implements **soft delete** functionality:
+
+**When isVisible = true:**
+- Visible to all users (according to role permissions above)
+
+**When isVisible = false:**
+- Visible only to Admin (for management)
+- Visible to the resource owner (student/company viewing own profile)
+- Hidden from all other users
+
+**Default:** true (new records are visible by default)
+
+**Use Cases:**
+- Temporarily hiding a profile
+- Soft delete before permanent deletion
+- Hiding inactive accounts
+
+---
+
+## Authentication
+
+### POST /api/auth/login
+**Login with email and password**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    password: 'password123'
+  })
+});
+const data = await response.json();
+// Save tokens for subsequent requests
+localStorage.setItem('access_token', data.data.accessToken);
+localStorage.setItem('refresh_token', data.data.refreshToken);
+```
+
+**Response:**
+```javascript
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "v1...",
+    "user": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "email": "user@example.com",
+      "role": "student" // or "company", "admin"
+    }
+  }
+}
+```
+
+### POST /api/auth/register
+**Register new account**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/auth/register`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'newuser@example.com',
+    password: 'password123',
+    fullName: 'John Doe',
+    role: 'student' // or 'company'
+  })
+});
+```
+
+### POST /api/auth/logout
+**Logout and invalidate session**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+await fetch(`${API_BASE_URL}/auth/logout`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  }
+});
+// Clear local storage
+localStorage.removeItem('access_token');
+localStorage.removeItem('refresh_token');
+```
+
+---
+
+## Current User Profile
+
+### GET /api/auth/me/profile
+**Get current user's own profile**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const response = await fetch(`${API_BASE_URL}/auth/me/profile`, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+const data = await response.json();
+```
+
+**Response (Student):**
+```javascript
+{
+  "success": true,
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "fullName": "John Doe",
+    "status": "Current Trainee",
+    "employmentStatus": "Open to work",
+    "university": "MIT",
+    "major": "Computer Science",
+    "preferredIndustry": "Technology",
+    "techStack": "JavaScript, React, Node.js",
+    "selfIntroduction": "Passionate developer...",
+    "cvUpload": null,
+    "profilePhoto": null,
+    "linkedin": "https://linkedin.com/in/john",
+    "portfolioLink": "https://github.com/john",
+    "phone": "1234567890",
+    "batch": "Batch 1",
+    "isVisible": true,
+    "timestamp": "2025-11-26T10:00:00.000Z"
+  }
+}
+```
+
+**Response (Company):**
+```javascript
+{
+  "success": true,
+  "data": {
+    "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+    "companyName": "Tech Corp",
+    "companySummary": "Innovative tech company",
+    "industry": "Technology",
+    "website": "https://techcorp.com",
+    "logo": null,
+    "techRoles": "Software Engineer",
+    "preferredSkillsets": "JavaScript, Python",
+    "contactPerson": "Jane Smith",
+    "contactEmail": "contact@techcorp.com",
+    "contactPhone": "+1234567890",
+    "contactInfoVisible": false,
+    "isVisible": true,
+    "timestamp": "2025-11-26T10:00:00.000Z"
+  }
+}
+```
+
+### PATCH /api/auth/me/profile
+**Update current user's own profile**
+
+**Request (Student):**
+```javascript
+const token = localStorage.getItem('access_token');
+await fetch(`${API_BASE_URL}/auth/me/profile`, {
+  method: 'PATCH',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    "fullName": "John Doe Updated",
+    "techStack": "JavaScript, React, Node.js, Python",
+    "phone": "+1234567890"
+  })
+});
+// Note: Only provided fields are updated (PATCH behavior)
+```
+
+**Request (Company):**
+```javascript
+const token = localStorage.getItem('access_token');
+await fetch(`${API_BASE_URL}/auth/me/profile`, {
+  method: 'PATCH',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    "website": "https://updated-website.com",
+    "companySummary": "Updated company description"
+  })
+});
+```
+
+---
+
+## Companies API
+
+### GET /api/companies
+**List all companies with filtering**
+
+**Query Parameters:**
+```javascript
+const params = new URLSearchParams({
+  page: 1,
+  limit: 20,
+  industry: "Technology", // optional
+  techRole: "Software Engineer" // optional
+});
+const response = await fetch(`${API_BASE_URL}/companies?${params}`);
+const data = await response.json();
+```
+
+**Response:**
+```javascript
+{
+  "success": true,
+  "data": [
+    {
+      "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "companyName": "Tech Corp",
+      "companySummary": "Innovative tech company",
+      "industry": "Technology",
+      "website": "https://techcorp.com",
+      "logo": "https://example.com/logo.png",
+      "techRoles": "Software Engineer",
+      "preferredSkillsets": "JavaScript, Python",
+      "contactPerson": "Jane Smith",
+      "contactEmail": "contact@techcorp.com",
+      "contactPhone": "+1234567890",
+      "contactInfoVisible": false
+    }
+  ],
   "pagination": {
     "page": 1,
     "limit": 20,
@@ -25,1934 +359,841 @@
 }
 ```
 
-### Error Response
-```json
-{
-  "success": false,
-  "message": "Error description",
-  "data": null
-}
+### GET /api/companies/:id
+**Get specific company (UUID required)**
+
+**Request:**
+```javascript
+const companyId = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"; // UUID, not number
+const response = await fetch(`${API_BASE_URL}/companies/${companyId}`, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+const data = await response.json();
 ```
 
----
+**Important: UUID Format Required**
+```javascript
+// Wrong - Will fail with 400 error
+const id = 123;
 
-# COMPANIES API
-
-## GET /api/companies
-**Description**: List all companies with filtering and pagination support.
-
-**Parameters**:
-- `page` (query, optional): Page number for pagination. Default: 1
-- `limit` (query, optional): Number of items per page. Default: 20
-- `industry` (query, optional): Filter by industry sector
-- `techRole` (query, optional): Filter by tech role
-
-**Return Value**: Array of company objects with pagination metadata
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/companies?page=1&limit=10&industry=Technology"
+// Correct - UUID v4 format
+const id = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
 ```
 
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Companies retrieved successfully",
-  "data": [
-    {
-      "id": 1,
-      "companyName": "Bright Innovations Ltd.",
-      "companySummary": "AI ethics and digital sustainability.",
-      "industry": "Artificial Intelligence",
-      "website": "companywebsite.com",
-      "logo": "companylogo.url",
-      "techRoles": "Software Engineer, Data Scientist",
-      "preferredSkillsets": "JavaScript, Python, SQL",
-      "contactPerson": "John Doe",
-      "contactEmail": "john.doe@example.com",
-      "contactPhone": "123-456-7890",
-      "contactInfoVisible": false
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 5,
-    "totalPages": 50
-  }
-}
-```
+### POST /api/companies
+**Create new company**
 
----
-
-## POST /api/companies
-**Description**: Create a new company profile.
-
-**Parameters**:
-- `companyName` (body, required): Company name - max 255 characters
-- `industry` (body, required): Industry sector - max 100 characters
-- `website` (body, optional): Company website - valid URL format
-- `techRoles` (body, optional): Tech roles needed - max 500 characters
-- `preferredSkillsets` (body, optional): Preferred skills - max 500 characters
-- `companySummary` (body, optional): Company description - max 1000 characters
-- `emailAddress` (body, required): Contact email - valid email format
-- `logoUrl` (body, optional): Company logo URL - valid URL format
-
-**Return Value**: Created company object with ID
-
-**Example**:
-```bash
-curl -X POST http://localhost:3001/api/companies \
-  -H "Content-Type: application/json" \
-  -d '{
-    "companyName": "Innovation Labs",
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+await fetch(`${API_BASE_URL}/companies`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    "companyName": "New Tech Corp",
+    "companySummary": "A technology company focused on innovation",
     "industry": "Technology",
-    "website": "https://innovationlabs.com",
-    "techRoles": "Full Stack Developer, DevOps Engineer",
-    "preferredSkillsets": "React, Node.js, AWS",
-    "companySummary": "Innovative tech startup focused on AI solutions",
-    "logoUrl": "logo.url",
-    "emailAddress": "careers@innovationlabs.com"
-  }'
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Company created successfully",
-  "data": {
-    "id": 123,
-    "companyName": "Innovation Labs",
-    "industry": "Technology",
-    "website": "https://innovationlabs.com",
-    "techRoles": "Full Stack Developer, DevOps Engineer",
-    "preferredSkillsets": "React, Node.js, AWS",
-    "companySummary": "Innovative tech startup focused on AI solutions",
-    "emailAddress": "careers@innovationlabs.com",
-    "logoUrl": "logo.url",
-    "createdAt": "2024-01-20T14:30:00.000Z",
-    "updatedAt": "2024-01-20T14:30:00.000Z"
-  }
-}
-```
-
----
-
-## GET /api/companies/:id
-**Description**: Get a specific company by ID.
-
-**Parameters**:
-- `id` (path, required): Company ID
-
-**Return Value**: Company object
-
-**Example**:
-```bash
-curl http://localhost:3001/api/companies/123
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Company retrieved successfully",
-  "data": {
-    "id": 123,
-    "companyName": "Example Company",
-    "companySummary": "This is a summary of the company.",
-    "industry": "Technology",
-    "website": "https://example.com",
-    "logo": "https://example.com/logo.png",
+    "emailAddress": "info@newtechcorp.com",
+    "website": "https://newtechcorp.com",
     "techRoles": "Software Engineer, Data Scientist",
-    "preferredSkillsets": "JavaScript, Python, SQL",
-    "contactPerson": "John Doe",
-    "contactEmail": "john.doe@example.com",
-    "contactPhone": "123-456-7890",
-    "contactInfoVisible": false
-  }
-}
+    "preferredSkillsets": "JavaScript, Python, AI"
+  })
+});
+```
+
+### PATCH /api/companies/:id
+**Update company (partial update only)**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const companyId = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+await fetch(`${API_BASE_URL}/companies/${companyId}`, {
+  method: 'PATCH',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    // Only update provided fields - other fields remain unchanged
+    "website": "https://updated-site.com"
+  })
+});
+```
+
+**Key Point: PATCH vs PUT**
+- **PATCH** (Used): Updates only specified fields, others remain unchanged
+- **PUT** (Disabled): Would replace entire resource, potentially nulling other fields
+
+### DELETE /api/companies/:id
+**Delete company**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const companyId = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+await fetch(`${API_BASE_URL}/companies/${companyId}`, {
+  method: 'DELETE',
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+```
+
+### GET /api/companies/search
+**Search companies**
+
+**Request:**
+```javascript
+const params = new URLSearchParams({
+  q: "react python developer",
+  industry: "Technology",
+  limit: 10
+});
+const response = await fetch(`${API_BASE_URL}/companies/search?${params}`);
+const data = await response.json();
+```
+
+### GET /api/companies/industries
+**Get list of industries**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/companies/industries`);
+const data = await response.json();
+// Returns: ["Technology", "Finance", "Healthcare", ...]
+```
+
+### GET /api/companies/tech-roles
+**Get list of tech roles**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/companies/tech-roles`);
+const data = await response.json();
+// Returns: ["Software Engineer", "Data Scientist", ...]
 ```
 
 ---
 
-## PUT /api/companies/:id
-**Description**: Update a company completely (replaces all fields).
+## Students API
 
-**Parameters**:
-- `id` (path, required): Company ID
-- `companyName` (body, required): Company name - max 255 characters
-- `industry` (body, required): Industry sector - max 100 characters
-- `website` (body, optional): Company website - valid URL format
-- `techRoles` (body, optional): Tech roles needed - max 500 characters
-- `preferredSkillsets` (body, optional): Preferred skills - max 500 characters
-- `companySummary` (body, optional): Company description - max 1000 characters
-- `emailAddress` (body, required): Contact email - valid email format
-- `logoUrl` (body, optional): Company logo URL - valid URL format
+### GET /api/students
+**List all students with filtering**
 
-**Return Value**: Updated company object
-
-**Example**:
-```bash
-curl -X PUT http://localhost:3001/api/companies/123 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "companyName": "Innovation Labs Updated",
-    "industry": "AI & Machine Learning",
-    "website": "https://innovationlabs.io",
-    "techRoles": "AI Engineer, ML Researcher",
-    "preferredSkillsets": "Python, TensorFlow, PyTorch",
-    "companySummary": "AI-focused research and development company",
-    "emailAddress": "updated@innovationlabs.com"
-  }'
+**Query Parameters:**
+```javascript
+const params = new URLSearchParams({
+  page: 1,
+  limit: 20,
+  status: "Current Trainee", // or "Alumni"
+  university: "MIT",
+  major: "Computer Science",
+  industry: "Technology",
+  skills: "javascript,react" // comma-separated
+});
+const response = await fetch(`${API_BASE_URL}/students?${params}`);
+const data = await response.json();
 ```
 
----
-
-## PATCH /api/companies/:id
-**Description**: Partially update a company (updates only specified fields).
-
-**Parameters**:
-- `id` (path, required): Company ID
-- Any subset of company fields (body, optional)
-
-**Return Value**: Updated company object
-
-**Example**:
-```bash
-curl -X PATCH http://localhost:3001/api/companies/123 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "companyName": "Innovation Labs Pro",
-    "techRoles": "Senior AI Engineer, Lead ML Researcher"
-  }'
-```
-
----
-
-## DELETE /api/companies/:id
-**Description**: Delete a company by ID.
-
-**Parameters**:
-- `id` (path, required): Company ID
-
-**Return Value**: Success message
-
-**Example**:
-```bash
-curl -X DELETE http://localhost:3001/api/companies/123
-```
-
-**Response**:
-```json
+**Response:**
+```javascript
 {
   "success": true,
-  "message": "Company deleted successfully",
-  "data": null
-}
-```
-
----
-
-## GET /api/companies/search
-**Description**: Search companies across multiple fields with advanced filtering.
-
-**Parameters**:
-- `q` (query, required): Search terms - supports multiple words
-- `page` (query, optional): Page number for pagination. Default: 1
-- `limit` (query, optional): Number of items per page. Default: 20
-- `industry` (query, optional): Filter by industry sector
-- `techRole` (query, optional): Filter by tech role
-
-**Return Value**: Array of matching companies with relevance scoring
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/companies/search?q=react+node.js&industry=Technology&limit=10"
-```
-
-**Notes**: Searches across company name, description, tech roles, and preferred skills. Multiple search terms are OR'ed together.
-
----
-
-## GET /api/companies/industries
-**Description**: Get all unique industries from companies.
-
-**Return Value**: Array of industry names
-
-**Example**:
-```bash
-curl http://localhost:3001/api/companies/industries
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Industries retrieved successfully",
-  "data": [
-    "Technology",
-    "Finance",
-    "Healthcare",
-    "E-commerce",
-    "Education"
-  ],
-  "total": 5
-}
-```
-
----
-
-## GET /api/companies/tech-roles
-**Description**: Get all unique tech roles from companies.
-
-**Return Value**: Array of tech role names
-
-**Example**:
-```bash
-curl http://localhost:3001/api/companies/tech-roles
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Tech roles retrieved successfully",
-  "data": [
-    "Software Engineer",
-    "Data Scientist",
-    "Full Stack Developer",
-    "DevOps Engineer",
-    "Frontend Developer",
-    "Backend Developer"
-  ],
-    "total": 6
-}
-```
-
----
-
-## GET /api/companies/stats
-**Description**: Get comprehensive statistics about companies.
-
-**Return Value**: Company statistics object
-
-**Example**:
-```bash
-curl http://localhost:3001/api/companies/stats
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Company statistics retrieved successfully",
-  "data": {
-    "totalCompanies": 2,
-    "totalIndustries": 2,
-    "totalTechRoles": 2,
-    "topIndustries": [
-      {
-        "item": "E-commerce",
-        "count": 1
-      }
-    ],
-      {
-        "item": "Telecommunications",
-        "count": 1
-      },
-    "topTechRoles": [
-      { "item": "Software Engineer", 
-        "count": 1 },
-      { "item": "Data Scientist", 
-        "count": 1 }
-    ],
-  }
-}
-```
-
----
-
-## POST /api/companies/validate-logo
-**Description**: Validate company logo URL and accessibility.
-
-**Parameters**:
-- `logoUrl` (body, required): Logo URL to validate
-
-**Return Value**: Validation result with file information
-
-**Example**:
-```bash
-curl -X POST http://localhost:3001/api/companies/validate-logo \
-  -H "Content-Type: application/json" \
-  -d '{
-    "logoUrl": "https://example.com/company-logo.jpg"
-  }'
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Logo URL validated successfully",
-  "data": {
-    "isValid": true,
-    "isAccessible": true,
-    "fileSize": 245680,
-    "contentType": "image/jpeg",
-    "dimensions": {
-      "width": 300,
-      "height": 200
-    }
-  }
-}
-```
-
-**Notes**: Validates URL format, accessibility, file type (image), and size constraints.
-
----
-
-# STUDENTS API
-
-## GET /api/students
-**Description**: List all students with comprehensive filtering and pagination.
-
-**Parameters**:
-- `page` (query, optional): Page number for pagination. Default: 1
-- `limit` (query, optional): Number of items per page. Default: 20
-- `status` (query, optional): Filter by status ("Current Trainee", "Alumni", "Dropout")
-- `university` (query, optional): Filter by university
-- `major` (query, optional): Filter by academic major
-- `industry` (query, optional): Filter by preferred industry
-- `skills` (query, optional): Filter by tech skills (comma-separated)
-
-**Return Value**: Array of student objects with pagination
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/students?page=1&limit=15&status=Current+Trainee&university=MIT"
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Students retrieved successfully",
   "data": [
     {
-      "id": 1,
+      "id": "550e8400-e29b-41d4-a716-446655440000",
       "fullName": "John Doe",
       "status": "Current Trainee",
-      "university": "Massachusetts Institute of Technology",
+      "employmentStatus": "Open to work",
+      "university": "MIT",
       "major": "Computer Science",
       "preferredIndustry": "Technology",
-      "techStack": "JavaScript, React, Node.js, Python",
-      "selfIntroduction": "Passionate full-stack developer with AI/ML interests",
-      "cvUpload": "https://example.com/cv.pdf",
-      "profilePhoto": "https://example.com/photo.jpg",
-      "linkedin": "https://linkedin.com/in/johndoe",
-      "portfolioLink": "https://github.com/johndoe",
-      "phone": 62895606191867,
-      "timestamp": "2025-10-27T06:34:15.274+00:00"
+      "techStack": "JavaScript, React, Node.js",
+      "selfIntroduction": "Passionate developer...",
+      "cvUpload": null,
+      "profilePhoto": null,
+      "linkedin": "https://linkedin.com/in/john",
+      "portfolioLink": "https://github.com/john",
+      "batch": "Batch 1",
+      "isVisible": true,
+      "timestamp": "2025-11-26T10:00:00.000Z"
     }
   ],
-  "pagination": {
-    "page": 1,
-    "limit": 15,
-    "totalPages": 8,
-    "totalCount": 120
-  }
-}
-```
-
----
-
-## POST /api/students
-**Description**: Create a new student profile.
-
-**Parameters**:
-- `fullName` (body, required): Student full name - max 255 characters
-- `status` (body, required): Student status - must be valid status
-- `university` (body, required): University name - max 255 characters
-- `major` (body, required): Academic major - max 255 characters
-- `preferredIndustry` (body, optional): Preferred industry - max 100 characters
-- `techStack` (body, optional): Technical skills - max 1000 characters
-- `selfIntroduction` (body, optional): Personal introduction - max 2000 characters
-- `cvUrl` (body, optional): CV URL - valid URL format
-- `photoUrl` (body, optional): Photo URL - valid URL format
-- `emailAddress` (body, optional): Email address - valid email format
-- `linkedinUrl` (body, optional): LinkedIn URL - valid URL format
-- `githubUrl` (body, optional): GitHub URL - valid URL format
-
-**Return Value**: Created student object with ID
-
-**Example**:
-```bash
-curl -X POST http://localhost:3001/api/students \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fullName": "Jane Smith",
-    "status": "Current Trainee",
-    "university": "Stanford University",
-    "major": "Computer Science",
-    "preferredIndustry": "Technology",
-    "techStack": "Python, TensorFlow, React, PostgreSQL",
-    "selfIntroduction": "AI/ML enthusiast with experience in building scalable web applications",
-    "emailAddress": "jane.smith@stanford.edu",
-    "linkedinUrl": "https://linkedin.com/in/janesmith",
-    "githubUrl": "https://github.com/janesmith"
-  }'
-```
-
----
-
-## GET /api/students/:id
-**Description**: Get a specific student by ID.
-
-**Parameters**:
-- `id` (path, required): Student ID
-
-**Return Value**: Student object
-
-**Example**:
-```bash
-curl http://localhost:3001/api/students/456
-```
-
----
-
-## PUT /api/students/:id
-**Description**: Update a student completely (replaces all fields).
-
-**Parameters**:
-- `id` (path, required): Student ID
-- All student fields (body, required except optional ones)
-
-**Return Value**: Updated student object
-
-**Example**:
-```bash
-curl -X PUT http://localhost:3001/api/students/456 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fullName": "Jane Smith Updated",
-    "status": "Alumni",
-    "university": "Stanford University",
-    "major": "Computer Science with AI Specialization",
-    "preferredIndustry": "AI & Machine Learning",
-    "techStack": "Python, TensorFlow, PyTorch, MLOps",
-    "selfIntroduction": "Machine Learning Engineer with 3 years of experience",
-    "emailAddress": "jane.smith.alumni@gmail.com"
-  }'
-```
-
----
-
-## PATCH /api/students/:id
-**Description**: Partially update a student (updates only specified fields).
-
-**Parameters**:
-- `id` (path, required): Student ID
-- Any subset of student fields (body, optional)
-
-**Return Value**: Updated student object
-
-**Example**:
-```bash
-curl -X PATCH http://localhost:3001/api/students/456 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "techStack": "Python, TensorFlow, PyTorch, MLOps, Kubernetes",
-    "status": "Alumni"
-  }'
-```
-
----
-
-## DELETE /api/students/:id
-**Description**: Delete a student by ID.
-
-**Parameters**:
-- `id` (path, required): Student ID
-
-**Return Value**: Success message
-
-**Example**:
-```bash
-curl -X DELETE http://localhost:3001/api/students/456
-```
-
----
-
-## GET /api/students/search
-**Description**: Search students across multiple fields with advanced filtering.
-
-**Parameters**:
-- `q` (query, required): Search terms - supports multiple words
-- `page` (query, optional): Page number for pagination. Default: 1
-- `limit` (query, optional): Number of items per page. Default: 20
-- `status` (query, optional): Filter by status
-- `university` (query, optional): Filter by university
-- `major` (query, optional): Filter by major
-- `industry` (query, optional): Filter by preferred industry
-- `skills` (query, optional): Filter by tech skills
-
-**Return Value**: Array of matching students with relevance scoring
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/students/search?q=machine+learning+python&university=MIT&status=Current+Trainee"
-```
-
-**Notes**: Searches across full name, university, major, preferred industry, tech stack, and self-introduction.
-
----
-
-## GET /api/students/status/:status
-**Description**: Get students filtered by specific status.
-
-**Parameters**:
-- `status` (path, required): Student status filter
-- `page` (query, optional): Page number for pagination. Default: 1
-- `limit` (query, optional): Number of items per page. Default: 20
-
-**Return Value**: Array of students with specified status
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/students/status/Current%20Trainee?page=1&limit=30"
-```
-
----
-
-## GET /api/students/universities
-**Description**: Get all unique universities from student profiles.
-
-**Return Value**: Array of university names
-
-**Example**:
-```bash
-curl http://localhost:3001/api/students/universities
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Universities retrieved successfully",
-  "data": [
-    "Massachusetts Institute of Technology",
-    "Stanford University",
-    "Harvard University",
-    "University of California, Berkeley",
-    "Carnegie Mellon University"
-  ],
-  "total": 5
-}
-```
-
----
-
-## GET /api/students/majors
-**Description**: Get all unique academic majors from student profiles.
-
-**Return Value**: Array of major names
-
-**Example**:
-```bash
-curl http://localhost:3001/api/students/majors
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Majors retrieved successfully",
-  "data": [
-    "Computer Science",
-    "Electrical Engineering",
-    "Information Systems",
-    "Data Science",
-    "Software Engineering"
-  ],
-  "total": 5
-}
-```
-
----
-
-## GET /api/students/industries
-**Description**: Get all unique preferred industries from student profiles.
-
-**Return Value**: Array of industry names
-
-**Example**:
-```bash
-curl http://localhost:3001/api/students/industries
-```
-
----
-
-## GET /api/students/skills
-**Description**: Get all unique tech skills from student profiles.
-
-**Return Value**: Array of tech skill names
-
-**Example**:
-```bash
-curl http://localhost:3001/api/students/skills
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Tech skills retrieved successfully",
-  "data": [
-    "JavaScript",
-    "Python",
-    "React",
-    "Node.js",
-    "TensorFlow",
-    "PostgreSQL",
-    "AWS",
-    "Docker"
-  ],
-  "total": 8
-}
-```
-
----
-
-## GET /api/students/stats
-**Description**: Get comprehensive statistics about students.
-
-**Return Value**: Student statistics object
-
-**Example**:
-```bash
-curl http://localhost:3001/api/students/stats
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Student statistics retrieved successfully",
-  "data": {
-    "totalStudents": 1200,
-    "studentsByStatus": {
-      "Current Trainee": 850,
-      "Alumni": 350,
-    },
-    "topUniversities": [
-      { "university": "Massachusetts Institute of Technology", "count": 85 },
-      { "university": "Stanford University", "count": 75 },
-      { "university": "University of California, Berkeley", "count": 65 }
-    ],
-    "topMajors": [
-      { "major": "Computer Science", "count": 450 },
-      { "major": "Electrical Engineering", "count": 280 },
-      { "major": "Information Systems", "count": 220 }
-    ],
-    "topIndustries": [
-      {
-        "item": "Technology",
-        "count": 680
-      },
-      {
-        "item": "Finance",
-        "count": 220,
-      },
-      {
-        "item": "Healthcare",
-        "count": 180
-      },
-      {
-        "item": "E-commerce",
-        "count": 120
-      },
-      {
-        "item": "Education", 
-        "count": 50
-      },
-    ],
-    "topSkills": [
-      { "item": "JavaScript",
-         "count": 750 
-      },
-      { "item": "Python",
-        "count": 680 
-      },
-      { "item": "React", 
-        "count": 520
-      }
-    ]
-  }
-}
-```
-
----
-
-## POST /api/students/validate-cv
-**Description**: Validate student CV URL and accessibility.
-
-**Parameters**:
-- `cvUrl` (body, required): CV URL to validate
-
-**Return Value**: Validation result with file information
-
-**Example**:
-```bash
-curl -X POST http://localhost:3001/api/students/validate-cv \
-  -H "Content-Type: application/json" \
-  -d '{
-    "cvUrl": "https://example.com/student-cv.pdf"
-  }'
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "CV URL validated successfully",
-  "data": {
-    "isValid": true,
-    "isAccessible": true,
-    "fileSize": 524288,
-    "contentType": "application/pdf",
-    "fileName": "student-cv.pdf"
-  }
-}
-```
-
-**Notes**: Validates URL format, accessibility, file type (PDF/DOC/DOCX), and size constraints (max 10MB).
-
----
-
-## POST /api/students/validate-photo
-**Description**: Validate student photo URL and accessibility.
-
-**Parameters**:
-- `photoUrl` (body, required): Photo URL to validate
-
-**Return Value**: Validation result with file information
-
-**Example**:
-```bash
-curl -X POST http://localhost:3001/api/students/validate-photo \
-  -H "Content-Type: application/json" \
-  -d '{
-    "photoUrl": "https://example.com/student-photo.jpg"
-  }'
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Photo URL validated successfully",
-  "data": {
-    "isValid": true,
-    "isAccessible": true,
-    "fileSize": 156780,
-    "contentType": "image/jpeg",
-    "dimensions": {
-      "width": 400,
-      "height": 400
-    }
-  }
-}
-```
-
-**Notes**: Validates URL format, accessibility, file type (image), and size constraints (max 5MB).
-
----
-
-# LOOKUP API
-
-## GET /api/lookup/all
-**Description**: Get all lookup data in a single request (industries, universities, majors, tech roles).
-
-**Return Value**: Combined lookup data object
-
-**Example**:
-```bash
-curl http://localhost:3001/api/lookup/all
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "All lookup data retrieved successfully",
-  "data": {
-    "industries": ["Technology", "Finance", "Healthcare"],
-    "universities": ["MIT", "Stanford", "Harvard"],
-    "majors": ["Computer Science", "Electrical Engineering"],
-    "studentStatuses": ["Alumni", "Current Trainee"],
-    "techRoles": ["Software Engineer", "Data Scientist"],
-    "techRoleCategories": ["Development", "Data Science", "Design"]
-  }
-}
-```
-
-**Notes**: This endpoint is cached for 1 hour for optimal performance.
-
----
-
-## GET /api/industries
-**Description**: Get comprehensive list of industries.
-
-**Return Value**: Array of industry objects with metadata
-
-**Example**:
-```bash
-curl http://localhost:3001/api/industries
-```
-
----
-
-## GET /api/universities
-**Description**: Get comprehensive list of universities.
-
-**Return Value**: Array of university objects with metadata
-
-**Example**:
-```bash
-curl http://localhost:3001/api/universities
-```
-
----
-
-## GET /api/majors
-**Description**: Get comprehensive list of academic majors.
-
-**Return Value**: Array of major objects with metadata
-
-**Example**:
-```bash
-curl http://localhost:3001/api/majors
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Majors retrieved successfully",
-  "data": [
-    "Computer Science",
-    "Electrical Engineering",
-    "Information Systems",
-    "Data Science",
-    "Software Engineering"
-  ],
-  "count": 5,
-  "timestamp": "2025-11-07T10:30:00.000Z"
-}
-```
-
----
-
-## GET /api/preferred-industries
-**Description**: Get comprehensive list of preferred industries from students who are "Open to work".
-
-**Return Value**: Array of preferred industry names sorted alphabetically
-
-**Example**:
-```bash
-curl http://localhost:3001/api/preferred-industries
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Preferred industries retrieved successfully",
-  "data": [
-    "Technology",
-    "Finance",
-    "Healthcare",
-    "E-commerce",
-    "Education",
-    "Manufacturing",
-    "Telecommunications"
-  ],
-  "count": 7,
-  "timestamp": "2025-11-07T10:30:00.000Z"
-}
-```
-
-**Notes**: Only includes students with employment_status = "Open to work". Supports comma-separated industry preferences (e.g., "Technology, Finance" becomes two separate entries).
-
----
-
-## GET /api/tech-roles
-**Description**: Get comprehensive list of tech roles.
-
-**Return Value**: Array of tech role objects with categories
-
-**Example**:
-```bash
-curl http://localhost:3001/api/tech-roles
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Tech roles retrieved successfully",
-  "data": [
-    "AI Engineer",
-    "Backend Developer",
-    "Backend Development",
-    "Data Science / AI",
-    "Data Scientist",
-    "DevOps Engineer"
-  ],
-  "count": 6,
-  "timestamp": "2025-10-29T14:56:37.898Z"
-}
-```
-
----
-
-## GET /api/tech-role-categories
-**Description**: Get all tech role categories.
-
-**Return Value**: Array of category names
-
-**Example**:
-```bash
-curl http://localhost:3001/api/tech-role-categories
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Tech role categories retrieved successfully",
-  "data": {
-    "Backend": [
-      "Backend Developer"
-    ],
-    "Data": [
-      "Data Scientist"
-    ],
-    "DevOps": [
-      "DevOps Engineer"
-    ],
-    "Frontend": [
-      "Frontend Developer",
-      "UI/UX Designer"
-    ],
-    "Full Stack": [
-      "Full Stack Developer"
-    ],
-    "Mobile": [
-      "Mobile Developer"
-    ],
-    "Other": [
-      "AI Engineer"
-    ]
-  },
-  "totalCategories": 7,
-  "totalRoles": 8,
-  "timestamp": "2025-10-29T14:57:33.242Z"
-}
-```
-
----
-
-## GET /api/tech-roles/category/:category
-**Description**: Get tech roles filtered by category.
-
-**Parameters**:
-- `category` (path, required): Category name
-
-**Return Value**: Array of tech roles in specified category
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/tech-roles/category/Data"
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Tech roles for category 'Data' retrieved successfully",
-  "data": [
-    "Data Scientist",
-    "Machine Learning Specialist"
-  ],
-  "category": "Data",
-  "count": 2,
-  "timestamp": "2025-10-29T14:59:40.454Z"
-}
-```
-
----
-
-## GET /api/search/industries
-**Description**: Search industries with fuzzy matching.
-
-**Parameters**:
-- `q` (query, required): Search query
-- `limit` (query, optional): Maximum results. Default: 10
-
-**Return Value**: Array of matching industries
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/search/industries?q=tech&limit=5"
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Industry search completed successfully",
-  "data": [
-    {
-      "name": "Technology"
-    },
-    {
-      "name": "Information Technology"
-    }
-  ],
-  "query": "tech",
-  "count": 2,
-  "totalAvailable": 14,
-  "timestamp": "2025-10-29T15:00:38.319Z"
-}
-```
-
----
-
-## GET /api/search/universities
-**Description**: Search universities with fuzzy matching.
-
-**Parameters**:
-- `q` (query, required): Search query
-- `limit` (query, optional): Maximum results. Default: 10
-
-**Return Value**: Array of matching universities 
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/search/universities?q=massachusetts&limit=5"
-```
-
----
-
-## GET /api/search/majors
-**Description**: Search academic majors with fuzzy matching.
-
-**Parameters**:
-- `q` (query, required): Search query
-- `limit` (query, optional): Maximum results. Default: 10
-
-**Return Value**: Array of matching majors 
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/search/majors?q=computer&limit=5"
-```
-
----
-
-## GET /api/search/preferred-industries
-**Description**: Search preferred industries with fuzzy matching.
-
-**Parameters**:
-- `q` (query, required): Search query
-- `limit` (query, optional): Maximum results. Default: 10
-
-**Return Value**: Array of matching preferred industries
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/search/preferred-industries?q=tech&limit=5"
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Preferred industry search completed successfully",
-  "data": [
-    {
-      "name": "Technology"
-    },
-    {
-      "name": "Information Technology"
-    },
-    {
-      "name": "Tech Startups"
-    }
-  ],
-  "query": "tech",
-  "count": 3,
-  "totalAvailable": 25,
-  "timestamp": "2025-11-07T10:30:00.000Z"
-}
-```
-
----
-
-## GET /api/search/tech-roles
-**Description**: Search tech roles with fuzzy matching.
-
-**Parameters**:
-- `q` (query, required): Search query
-- `limit` (query, optional): Maximum results. Default: 10
-
-**Return Value**: Array of matching tech roles 
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/search/tech-roles?q=data&limit=5"
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Tech role search completed successfully",
-  "data": [
-    {
-      "name": "Data Science / AI"
-    },
-    {
-      "name": "Data Scientist"
-    }
-  ],
-  "query": "data",
-  "count": 2,
-  "totalAvailable": 16,
-  "timestamp": "2025-10-29T15:01:58.581Z"
-}
-```
-
----
-
-## GET /api/suggestions/tech-skills
-**Description**: Get tech skill suggestions based on partial input.
-
-**Parameters**:
-- `q` (query, required): Partial skill name
-- `limit` (query, optional): Maximum suggestions. Default: 8
-
-**Return Value**: Array of skill suggestions
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/suggestions/tech-skills?q=java&limit=5"
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Tech skill suggestions retrieved successfully",
-  "data": [
-    "JavaScript",
-    "Java",
-    "TypeScript",
-    "Java Spring Boot",
-    "JavaScript React"
-  ],
-  "count": 5,
-  "totalAvailable": 51,
-  "timestamp": "2025-10-29T15:02:30.698Z"
-}
-```
-
-**Notes**: Provides autocomplete suggestions for tech skills input fields.
-
----
-
-## GET /api/popular/industries
-**Description**: Get most popular industries ranked by usage count.
-
-**Parameters**:
-- `limit` (query, optional): Number of results. Default: 10
-
-**Return Value**: Array of popular industries with counts
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/popular/industries?limit=10"
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Popular industries retrieved successfully",
-  "data": [
-    {
-      "name": "Technology",
-      "count": 125
-    },
-    {
-      "name": "Finance",
-      "count": 100
-    },
-    {
-      "name": "Healthcare",
-      "count": 150
-    }
-  ],
-  "count": 3,
-  "totalAvailable": 375,
-  "timestamp": "2025-10-29T15:03:20.749Z"
-}
-```
-
----
-
-## GET /api/popular/preferred-industries
-**Description**: Get most popular preferred industries ranked by usage count from students who are "Open to work".
-
-**Parameters**:
-- `limit` (query, optional): Number of results. Default: 10
-
-**Return Value**: Array of popular preferred industries with counts
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/popular/preferred-industries?limit=10"
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Popular preferred industries retrieved successfully",
-  "data": [
-    {
-      "name": "Technology",
-      "count": 245
-    },
-    {
-      "name": "Finance",
-      "count": 189
-    },
-    {
-      "name": "Healthcare",
-      "count": 156
-    },
-    {
-      "name": "E-commerce",
-      "count": 134
-    },
-    {
-      "name": "Education",
-      "count": 98
-    }
-  ],
-  "count": 5,
-  "totalAvailable": 15,
-  "timestamp": "2025-11-07T10:30:00.000Z"
-}
-```
-
-**Notes**: Only includes students with employment_status = "Open to work". Counts reflect individual industry preferences, even when students have multiple comma-separated preferences.
-
----
-
-## GET /api/popular/tech-roles
-**Description**: Get most popular tech roles ranked by usage count.
-
-**Parameters**:
-- `limit` (query, optional): Number of results. Default: 10
-
-**Return Value**: Array of popular tech roles with counts
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/popular/tech-roles?limit=10"
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Popular tech roles retrieved successfully",
-  "data": [
-    {
-      "name": "Software Engineer",
-      "count": 890
-    },
-    {
-      "name": "Full Stack Developer",
-      "count": 650
-    },
-    {
-      "name": "Data Scientist",
-      "count": 420
-    }
-  ],
-  "count": 3,
-  "totalAvailable": 1.960,
-  "timestamp": "2025-10-29T15:04:47.916Z"
-}
-```
-
----
-
-## GET /api/popular/tech-skills
-**Description**: Get most popular tech skills ranked by usage count.
-
-**Parameters**:
-- `limit` (query, optional): Number of results. Default: 15
-
-**Return Value**: Array of popular tech skills with counts
-
-**Example**:
-```bash
-curl "http://localhost:3001/api/popular/tech-skills?limit=15"
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Popular tech skills retrieved successfully",
-  "data": [
-    {
-      "name": "JavaScript",
-      "count": 100
-    },
-    {
-      "name": "Python",
-      "count": 100
-    },
-    {
-      "name": "React",
-      "count": 100
-    },
-    {
-      "name": "Node.js",
-      "count": 100
-    }
-  ],
-  "count": 4,
-  "totalAvailable": 400,
-  "timestamp": "2025-10-29T15:06:53.735Z"
-}
-```
-
----
-
-## GET /api/cache/status
-**Description**: Get current cache status and performance metrics.
-
-**Return Value**: Cache status object with performance metrics
-
-**Example**:
-```bash
-curl http://localhost:3001/api/cache/status
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Cache status retrieved successfully",
-  "data": {
-    "cacheEnabled": true,
-    "cacheHits": 1250,
-    "cacheMisses": 180,
-    "cacheHitRate": 0.874,
-    "totalRequests": 1430,
-    "averageResponseTime": 45.2,
-    "cacheSize": "2.3MB",
-    "lastCacheUpdate": "2024-01-20T14:30:00.000Z",
-    "cacheVersion": "1.2",
-    "ttl": 3600,
-    "timeUntilExpiry": 2850
-  }
-}
-```
-
-**Notes**: Provides detailed cache performance metrics for monitoring and optimization.
-
----
-
-## POST /api/cache/clear
-**Description**: Clear lookup cache (admin operation).
-
-**Parameters**:
-- `adminKey` (body, optional): Admin authentication key (if configured)
-
-**Return Value**: Cache clear confirmation
-
-**Example**:
-```bash
-curl -X POST http://localhost:3001/api/cache/clear \
-  -H "Content-Type: application/json" \
-  -d '{
-    "adminKey": "your-admin-key"
-  }'
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Cache cleared successfully",
-  "data": {
-    "cacheClearedAt": "2024-01-20T15:45:00.000Z",
-    "entriesCleared": 45,
-    "memoryFreed": "2.3MB"
-  }
-}
-```
-
-**Notes**: Requires admin privileges. Forces cache refresh on next request.
-
----
-
-## Real-time Cache Invalidation
-
-The API implements intelligent cache invalidation based on database change detection:
-
-### Cache Invalidation Mechanism
-
-- **Database Event Detection**: Automatic detection of data changes via Supabase Realtime
-- **Column-Specific Detection**: Monitors changes to specific columns (name, status, etc.)
-- **Targeted Invalidation**: Only clears cache entries affected by data changes
-- **DELETE Handling**: Comprehensive cache clearing for deleted records
-- **UPDATE Handling**: Granular cache invalidation based on changed fields
-- **Multi-Table Support**: Handles changes across students, companies, and lookup tables
-
-### Real-time Event Processing
-
-The system monitors database changes and automatically invalidates relevant cache entries:
-
-**Student Table Changes**:
-- Monitored Columns: 16 critical columns including `full_name`, `status`, `university_institution`, `tech_stack_skills`, `employment_status`
-- Affected Endpoints: Student lists, university data, major data, tech skills, search results
-
-**Company Table Changes**:
-- Monitored Columns: 6 critical columns including `company_name`, `industry_sector`, `tech_roles_interest`, `contact_info_visible`
-- Affected Endpoints: Company lists, industry data, tech roles, search results
-
-### Real-time Log Patterns
-
-**UPDATE Events**:
-```
-[REALTIME] Student UPDATE: { id: 123, hasStatusChange: false, changedColumns: ['full_name', 'tech_stack_skills'] }
-[REALTIME] Company UPDATE: { id: 456, hasVisibilityChange: false, changedColumns: ['company_name'] }
-```
-
-**DELETE Events**:
-```
-[REALTIME] Student DELETE detected: { id: 123, name: "Student Name" }
-[REALTIME] Student DELETE cache invalidation completed for ID: 123
-[REALTIME] Company DELETE detected: { id: 456, name: "Company Name" }
-[REALTIME] Company DELETE cache invalidation completed for ID: 456
-```
-
-**Targeted Invalidation**:
-```
-[REALTIME] Targeted cache invalidation for students: 3 patterns
-[REALTIME] Targeted cache invalidation for companies: 2 patterns
-```
-
-### Cache Invalidation Response Headers
-
-Real-time cache operations may affect response headers:
-- `X-Cache-Realtime`: Indicates if data is synchronized with real-time database changes
-- `X-Subscription-Status`: Shows realtime subscription health
-- `X-Last-Change`: Timestamp of most recent database change detection
-
-### Error Handling
-
-**Real-time Service Errors**:
-```json
-{
-  "success": false,
-  "message": "Realtime service unavailable",
-  "data": null,
-  "error": {
-    "code": "REALTIME_UNAVAILABLE",
-    "subscriptions": 0,
-    "reconnectAttempts": 5
-  }
-}
-```
-
-**Recovery**: Service automatically attempts reconnection with exponential backoff.
-
-### Monitoring Real-time Performance
-
-**Health Check**:
-```bash
-curl http://localhost:3001/health/realtime
-```
-
-**Expected Response**:
-```json
-{
-  "status": "OK",
-  "realtime": {
-    "isConnected": true,
-    "subscriptionsCount": 2,
-    "reconnectAttempts": 0,
-    "subscriptions": ["students", "companies"]
-  }
-}
-```
-
----
-
-## POST /api/validate/tech-skills
-**Description**: Validate array of tech skills against known skills database.
-
-**Parameters**:
-- `skills` (body, required): Array of skill names to validate
-
-**Return Value**: Validation result with skill analysis
-
-**Example**:
-```bash
-curl -X POST http://localhost:3001/api/validate/tech-skills \
-  -H "Content-Type: application/json" \
-  -d '{
-    "skills": ["JavaScript", "React", "Python", "UnknownSkill", "Java"]
-  }'
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Tech skills validation completed",
-  "data": {
-    "validSkills": ["JavaScript", "React", "Python", "Java"],
-    "invalidSkills": ["UnknownSkill"],
-    "suggestions": {
-      "UnknownSkill": ["Unknown Skill", "Unrecognized Skill"]
-    },
-    "statistics": {
-      "totalSkills": 5,
-      "validCount": 4,
-      "invalidCount": 1,
-      "validityRate": 0.8
-    }
-  }
-}
-```
-
-**Notes**: Validates skills against known database and provides suggestions for invalid skills.
-
-
-# SYSTEM APIS
-
-## GET /health
-**Description**: Basic health check endpoint for monitoring systems.
-
-**Return Value**: Health status object
-
-**Example**:
-```bash
-curl http://localhost:3001/health
-```
-
-**Response**:
-```json
-{
-  "status": "OK",
-  "message": "KADA Connect Backend is running",
-  "timestamp": "2025-10-29T15:09:12.852Z",
-  "version": "1.0.0"
-}
-```
-
-**Notes**: Designed for load balancers and monitoring systems. Returns HTTP 200 for healthy status.
-
----
-
-## GET /health/realtime
-**Description**: Get real-time database change detection service status.
-
-**Return Value**: Real-time service status object
-
-**Example**:
-```bash
-curl http://localhost:3001/health/realtime
-```
-
-**Response**:
-```json
-{
-  "status": "OK",
-  "realtime": {
-    "isConnected": true,
-    "subscriptionsCount": 2,
-    "reconnectAttempts": 0,
-    "subscriptions": ["students", "companies"]
-  },
-  "message": "Realtime database change detection is active",
-  "timestamp": "2025-11-11T03:40:35.736Z",
-  "version": "1.0.0"
-}
-```
-
-**Response Fields**:
-- `realtime.isConnected`: Boolean indicating if realtime service is connected
-- `realtime.subscriptionsCount`: Number of active database subscriptions
-- `realtime.reconnectAttempts`: Number of reconnection attempts made
-- `realtime.subscriptions`: Array of subscribed table names
-- `status`: Overall health status
-- `message`: Descriptive status message
-- `timestamp`: ISO timestamp of status check
-- `version`: API version
-
-**Notes**: Monitors Supabase realtime subscription health and connection status. Returns HTTP 200 for healthy status, appropriate error codes for service issues.
-
-**Status Codes**:
-- `200 OK`: Realtime service is healthy and connected
-- `503 Service Unavailable`: Realtime service is not responding
-- `500 Internal Server Error`: Service encountered an error
-
----
-
-## GET /api/docs
-**Description**: Redirect or return API documentation.
-
-**Return Value**: Documentation information
-
-**Example**:
-```bash
-curl http://localhost:3001/api/docs
-```
-
-**Response**:
-```json
-{
-  "message": "KADA Connect API Documentation",
-  "version": "1.0.0",
-  "baseUrl": "http://localhost:3001/api",
-  "endpoints": {
-    "companies": {
-      "GET /companies": "List companies with filtering and pagination",
-      "GET /companies/:id": "Get company by ID",
-      "GET /companies/stats": "Get company statistics",
-      "POST /companies/search": "Advanced company search",
-      "POST /companies/validate-logo": "Validate company logo upload"
-    },
-    "students": {
-      "GET /students": "List students with filtering and pagination",
-      "GET /students/:id": "Get student by ID",
-      "GET /students/stats": "Get student statistics",
-      "GET /students/featured": "Get featured students",
-      "GET /students/status-options": "Get student status options",
-    },
-    "lookup": {
-      "GET /lookup/all": "Get all lookup data",
-      "GET /industries": "Get industries list",
-      "GET /tech-roles": "Get tech roles list",
-      "GET /tech-role-categories": "Get tech role categories"
-    }
-  }
-}
-```
-
-**Notes**: Provides navigation to comprehensive API documentation and supporting resources.
-
----
-
-# ERROR HANDLING
-
-## Standard Error Response Format
-
-All API errors follow this consistent format:
-
-```json
-{
-  "success": false,
-  "message": "Detailed error description",
-  "data": null,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "field": "emailAddress",
-    "details": "Invalid email format"
-  }
-}
-```
-
-## Common HTTP Status Codes
-
-| Status Code | Meaning | When Used |
-|-------------|---------|-----------|
-| 200 | OK | Successful request |
-| 201 | Created | Resource successfully created |
-| 400 | Bad Request | Invalid request format or validation errors |
-| 401 | Unauthorized | Authentication required or invalid credentials |
-| 403 | Forbidden | Insufficient permissions |
-| 404 | Not Found | Resource not found |
-| 429 | Too Many Requests | Rate limit exceeded |
-| 500 | Internal Server Error | Server-side error |
-
-## Validation Error Examples
-
-```json
-{
-  "success": false,
-  "message": "Validation failed",
-  "data": null,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "field": "emailAddress",
-    "details": "Invalid email format"
-  }
-}
-```
-
-## Rate Limiting Error
-
-```json
-{
-  "success": false,
-  "message": "Rate limit exceeded",
-  "data": null,
-  "error": {
-    "code": "RATE_LIMIT_EXCEEDED",
-    "limit": 50,
-    "window": 900000,
-    "retryAfter": 300
-  }
-}
-```
-
----
-
-# PAGINATION
-
-List endpoints support consistent pagination:
-
-## Query Parameters
-- `page`: Page number (default: 1)
-- `limit`: Items per page (default: 20, max: 100)
-
-## Response Format
-```json
-{
-  "success": true,
-  "data": [...],
   "pagination": {
     "page": 1,
     "limit": 20,
     "totalPages": 5,
-    "totalCount": 100,
-    "hasNext": true,
-    "hasPrev": false
+    "totalCount": 100
   }
 }
 ```
 
+**Note:** Each student record includes:
+- `batch`: Bootcamp batch (e.g., "Batch 1", "Batch 2", "Batch 3", or null)
+- `isVisible`: Visibility status (true = visible to others, false = hidden)
+
+### GET /api/students/:id
+**Get specific student (UUID required)**
+
+**Request:**
+```javascript
+const studentId = "550e8400-e29b-41d4-a716-446655440000"; // UUID
+const response = await fetch(`${API_BASE_URL}/students/${studentId}`, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+const data = await response.json();
+```
+
+### POST /api/students
+**Create new student**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+await fetch(`${API_BASE_URL}/students`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    "fullName": "Jane Smith",
+    "status": "Current Trainee",
+    "employmentStatus": "Open to work",
+    "university": "Stanford University",
+    "major": "Computer Science",
+    "preferredIndustry": "Technology",
+    "techStack": "Python, TensorFlow, React",
+    "selfIntroduction": "AI/ML enthusiast with experience..."
+  })
+});
+```
+
+### PATCH /api/students/:id
+**Update student (partial update only)**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const studentId = "550e8400-e29b-41d4-a716-446655440000";
+await fetch(`${API_BASE_URL}/students/${studentId}`, {
+  method: 'PATCH',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    "techStack": "JavaScript, React, Node.js, Python",
+    "status": "Alumni"
+    // Other fields remain unchanged
+  })
+});
+```
+
+### DELETE /api/students/:id
+**Delete student**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const studentId = "550e8400-e29b-41d4-a716-446655440000";
+await fetch(`${API_BASE_URL}/students/${studentId}`, {
+  method: 'DELETE',
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+```
+
+### GET /api/students/search
+**Search students**
+
+**Request:**
+```javascript
+const params = new URLSearchParams({
+  q: "react node developer",
+  status: "Current Trainee",
+  university: "MIT",
+  limit: 10
+});
+const response = await fetch(`${API_BASE_URL}/students/search?${params}`);
+const data = await response.json();
+```
+
+### GET /api/students/status/:status
+**Get students by status**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/students/status/Current%20Trainee`);
+const data = await response.json();
+```
+
+### GET /api/students/universities
+**Get unique universities**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/students/universities`);
+const data = await response.json();
+// Returns: ["MIT", "Stanford", "Harvard", ...]
+```
+
+### GET /api/students/majors
+**Get unique majors**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/students/majors`);
+const data = await response.json();
+// Returns: ["Computer Science", "Electrical Engineering", ...]
+```
+
+### GET /api/students/industries
+**Get unique preferred industries**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/students/industries`);
+const data = await response.json();
+// Returns: ["Technology", "Finance", "Healthcare", ...]
+```
+
+### GET /api/students/skills
+**Get unique tech skills**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/students/skills`);
+const data = await response.json();
+// Returns: ["JavaScript", "Python", "React", ...]
+```
+
 ---
 
-# RATE LIMITING
+## File Upload
 
-## Rate Limit Configuration
+### Student CV Upload
 
-- **Standard endpoints**: 1000 requests per hour per IP
-- **Search endpoints**: 200 requests per minute per IP
-- **Admin endpoints**: 100 requests per hour per admin key
+**POST /api/students/:id/cv**
+```javascript
+const token = localStorage.getItem('access_token');
+const studentId = "550e8400-e29b-41d4-a716-446655440000";
 
-## Rate Limit Headers
+// Create FormData
+const formData = new FormData();
+formData.append('cv', fileInput.files[0]); // 'cv' is the field name
 
-All responses include rate limit information:
-
+await fetch(`${API_BASE_URL}/students/${studentId}/cv`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`
+    // Don't set Content-Type - browser will set it with boundary
+  },
+  body: formData
+});
 ```
-X-RateLimit-Limit: 1000
-X-RateLimit-Remaining: 950
-X-RateLimit-Reset: 1642694400
+
+**Response:**
+```javascript
+{
+  "success": true,
+  "message": "CV uploaded successfully",
+  "data": {
+    "studentId": "550e8400-e29b-41d4-a716-446655440000",
+    "cv": {
+      "id": "file-uuid",
+      "url": "https://storage-url.com/cvs/filename.pdf",
+      "originalName": "resume.pdf",
+      "size": 123456,
+      "mimeType": "application/pdf",
+      "uploadedAt": "2025-11-26T10:00:00.000Z"
+    }
+  }
+}
 ```
 
-## Rate Limit Error Response
+### Student Profile Photo Upload
 
-```json
+**POST /api/students/:id/photo**
+```javascript
+const token = localStorage.getItem('access_token');
+const studentId = "550e8400-e29b-41d4-a716-446655440000";
+
+const formData = new FormData();
+formData.append('photo', fileInput.files[0]);
+
+await fetch(`${API_BASE_URL}/students/${studentId}/photo`, {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${token}` },
+  body: formData
+});
+```
+
+### Company Logo Upload
+
+**POST /api/companies/:id/logo**
+```javascript
+const token = localStorage.getItem('access_token');
+const companyId = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+
+const formData = new FormData();
+formData.append('logo', fileInput.files[0]);
+
+await fetch(`${API_BASE_URL}/companies/${companyId}/logo`, {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${token}` },
+  body: formData
+});
+```
+
+### File Deletion
+
+**DELETE /api/students/:id/cv**
+```javascript
+const token = localStorage.getItem('access_token');
+const studentId = "550e8400-e29b-41d4-a716-446655440000";
+
+await fetch(`${API_BASE_URL}/students/${studentId}/cv`, {
+  method: 'DELETE',
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+```
+
+**DELETE /api/students/:id/photo**
+```javascript
+const token = localStorage.getItem('access_token');
+const studentId = "550e8400-e29b-41d4-a716-446655440000";
+
+await fetch(`${API_BASE_URL}/students/${studentId}/photo`, {
+  method: 'DELETE',
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+```
+
+**DELETE /api/companies/:id/logo**
+```javascript
+const token = localStorage.getItem('access_token');
+const companyId = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+
+await fetch(`${API_BASE_URL}/companies/${companyId}/logo`, {
+  method: 'DELETE',
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+```
+
+### File Upload via Profile Endpoint
+
+You can also upload files through the profile endpoint:
+
+**POST /api/auth/me/cv** (students only)
+```javascript
+const token = localStorage.getItem('access_token');
+const formData = new FormData();
+formData.append('cv', fileInput.files[0]);
+
+await fetch(`${API_BASE_URL}/auth/me/cv`, {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${token}` },
+  body: formData
+});
+```
+
+**POST /api/auth/me/photo** (students only)
+```javascript
+const token = localStorage.getItem('access_token');
+const formData = new FormData();
+formData.append('photo', fileInput.files[0]);
+
+await fetch(`${API_BASE_URL}/auth/me/photo`, {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${token}` },
+  body: formData
+});
+```
+
+**POST /api/auth/me/logo** (companies only)
+```javascript
+const token = localStorage.getItem('access_token');
+const formData = new FormData();
+formData.append('logo', fileInput.files[0]);
+
+await fetch(`${API_BASE_URL}/auth/me/logo`, {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${token}` },
+  body: formData
+});
+```
+
+---
+
+## Error Handling
+
+### Standard Error Response
+```javascript
 {
   "success": false,
-  "message": "Rate limit exceeded. Please try again later.",
-  "data": null,
-  "error": {
-    "code": "RATE_LIMIT_EXCEEDED",
-    "retryAfter": 3600
+  "message": "Detailed error description",
+  "data": null
+}
+```
+
+### Common HTTP Status Codes
+
+| Code | Meaning | Frontend Action |
+|------|---------|----------------|
+| 200 | Success | Continue |
+| 201 | Created | Resource created |
+| 400 | Bad Request | Show error to user |
+| 401 | Unauthorized | Redirect to login |
+| 403 | Forbidden | Show "permission denied" |
+| 404 | Not Found | Show "not found" |
+| 500 | Server Error | Show "something went wrong" |
+
+### Validation Error Example
+```javascript
+// When updating without required fields or wrong format
+{
+  "success": false,
+  "message": "Validation failed",
+  "error": "Website must be a valid URL"
+}
+```
+
+### Authentication Error Example
+```javascript
+// When token is expired or invalid
+{
+  "success": false,
+  "message": "Invalid or expired token",
+  "data": null
+}
+```
+
+**Frontend Action:**
+```javascript
+// Check for 401 and redirect to login
+if (response.status === 401) {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  window.location.href = '/login';
+}
+```
+
+### UUID Validation Error
+```javascript
+// When sending non-UUID ID
+{
+  "success": false,
+  "message": "Valid student ID (UUID) is required",
+  "data": null
+}
+```
+
+**Frontend Action:**
+```javascript
+// Always use UUID format for IDs
+const studentId = "550e8400-e29b-41d4-a716-446655440000"; // Correct
+// Not: const studentId = 123; Wrong
+```
+
+---
+
+## Field Names Guide
+
+### Company Fields
+
+**Response Format (What you receive):**
+```javascript
+{
+  "companyName": "Tech Corp",
+  "companySummary": "Company description",
+  "industry": "Technology",
+  "website": "https://techcorp.com",
+  "logo": "https://logo-url.com/logo.png",
+  "techRoles": "Software Engineer",
+  "preferredSkillsets": "JavaScript, Python",
+  "contactPerson": "John Doe",
+  "contactEmail": "john@techcorp.com",
+  "contactPhone": "+1234567890",
+  "contactInfoVisible": false,
+  "isVisible": true
+}
+```
+
+**When Sending (Accept both formats):**
+```javascript
+// New format (recommended)
+{
+  "website": "https://new-site.com",
+  "contactPerson": "Jane Doe",
+  "contactEmail": "jane@techcorp.com",
+  "contactPhone": "+1234567890",
+  "contactInfoVisible": true,
+  "isVisible": false
+}
+
+// Old format (also works for backward compatibility)
+{
+  "companyWebsite": "https://new-site.com",
+  "contactPersonName": "Jane Doe",
+  "contactEmailAddress": "jane@techcorp.com",
+  "contactPhoneNumber": "+1234567890",
+  "visibleContactInfo": true
+}
+```
+
+**Field Notes:**
+- `website` or `companyWebsite`: Both accepted
+- `contactPerson` or `contactPersonName`: Both accepted
+- `contactEmail` or `contactEmailAddress`: Both accepted
+- `contactPhone` or `contactPhoneNumber`: Both accepted
+- `contactInfoVisible` or `visibleContactInfo`: Both accepted
+- `isVisible`: Optional boolean for soft delete (default: true)
+
+### Student Fields
+
+**Response Format (What you receive):**
+```javascript
+{
+  "fullName": "John Doe",
+  "status": "Current Trainee",
+  "employmentStatus": "Open to work",
+  "university": "MIT",
+  "major": "Computer Science",
+  "preferredIndustry": "Technology",
+  "techStack": "JavaScript, React",
+  "selfIntroduction": "About me...",
+  "cvUpload": "https://cv-url.com/cv.pdf",
+  "profilePhoto": "https://photo-url.com/photo.jpg",
+  "linkedin": "https://linkedin.com/in/john",
+  "portfolioLink": "https://github.com/john",
+  "phone": "1234567890",
+  "batch": "Batch 1",
+  "isVisible": true
+}
+```
+
+**When Sending (Accept both formats):**
+```javascript
+// New format (recommended)
+{
+  "phone": "+1234567890",
+  "batch": "Batch 2",
+  "isVisible": false
+}
+
+// Old format (also works for backward compatibility)
+{
+  "phoneNumber": "+1234567890"
+}
+```
+
+**Field Notes:**
+- `batch`: Optional field for bootcamp batch (e.g., "Batch 1", "Batch 2", "Batch 3")
+- `isVisible`: Optional boolean for soft delete (default: true)
+- `phone` or `phoneNumber`: Both accepted for backward compatibility
+
+---
+
+## Frontend Integration Tips
+
+### 1. Authentication Helper
+```javascript
+// api.js
+const API_BASE_URL = 'http://localhost:3001/api';
+
+async function apiRequest(endpoint, options = {}) {
+  const token = localStorage.getItem('access_token');
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers
+    }
+  });
+
+  if (response.status === 401) {
+    // Token expired, redirect to login
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    window.location.href = '/login';
+    return;
   }
+
+  const data = await response.json();
+  return data;
+}
+
+// Usage
+const companies = await apiRequest('/companies');
+const profile = await apiRequest('/auth/me/profile');
+```
+
+### 2. File Upload Helper
+```javascript
+async function uploadFile(endpoint, file, fieldName = 'file') {
+  const token = localStorage.getItem('access_token');
+  const formData = new FormData();
+  formData.append(fieldName, file);
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: 'POST',
+    headers: {
+      ...(token && { 'Authorization': `Bearer ${token}` })
+      // Don't set Content-Type for FormData
+    },
+    body: formData
+  });
+
+  return await response.json();
+}
+
+// Usage
+const result = await uploadFile('/auth/me/cv', fileInput.files[0], 'cv');
+```
+
+### 3. UUID Generation (for new resources)
+```javascript
+// Generate UUID v4 for new resources
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+// But you don't need to - API returns UUIDs in responses
+```
+
+### 4. Form Handling for PATCH
+```javascript
+// Collect only changed fields for PATCH request
+function prepareUpdateData(formData, originalData) {
+  const updates = {};
+
+  Object.keys(formData).forEach(key => {
+    if (formData[key] !== originalData[key]) {
+      updates[key] = formData[key];
+    }
+  });
+
+  return updates;
+}
+
+// Usage
+const changes = prepareUpdateData(formData, currentProfile);
+if (Object.keys(changes).length > 0) {
+  await apiRequest('/auth/me/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(changes)
+  });
+}
+```
+
+### 5. Error Message Display
+```javascript
+function showError(error) {
+  const message = typeof error === 'string'
+    ? error
+    : error.message || 'An error occurred';
+
+  alert(message); // Or use your preferred UI library
+}
+
+// Usage
+try {
+  await updateProfile(data);
+} catch (error) {
+  showError(error);
 }
 ```
 
 ---
 
-# SECURITY CONSIDERATIONS
+## Quick Reference
 
-## CORS Configuration
+### All Endpoints Summary
 
-The API implements CORS with configurable allowed origins.
+**Authentication:**
+- `POST /api/auth/login` - Login
+- `POST /api/auth/register` - Register
+- `POST /api/auth/logout` - Logout
 
-## Input Validation
+**Current User:**
+- `GET /api/auth/me/profile` - Get profile
+- `PATCH /api/auth/me/profile` - Update profile
+- `POST /api/auth/me/cv` - Upload CV (students)
+- `POST /api/auth/me/photo` - Upload photo (students)
+- `POST /api/auth/me/logo` - Upload logo (companies)
 
-- All inputs are validated using Joi schemas
-- SQL injection protection through parameterized queries
-- XSS protection with input sanitization
-- File upload restrictions for security
+**Companies:**
+- `GET /api/companies` - List companies
+- `GET /api/companies/:id` - Get company (UUID)
+- `POST /api/companies` - Create company
+- `PATCH /api/companies/:id` - Update company (UUID)
+- `DELETE /api/companies/:id` - Delete company (UUID)
+- `GET /api/companies/search` - Search
+- `GET /api/companies/industries` - Get industries
+- `GET /api/companies/tech-roles` - Get tech roles
+- `POST /api/companies/:id/logo` - Upload logo
+- `GET /api/companies/:id/logo` - Get logo
+- `DELETE /api/companies/:id/logo` - Delete logo
 
-## Proxy API Security
-
-- Domain allowlist for URL proxying
-- File type and size restrictions
-- Rate limiting to prevent abuse
-- Access logging and monitoring
-
-## Data Protection
-
-- Environment variables for sensitive configuration
-- No sensitive data in API responses
-- Secure headers implementation with Helmet.js
-- Regular security updates and monitoring
+**Students:**
+- `GET /api/students` - List students
+- `GET /api/students/:id` - Get student (UUID)
+- `POST /api/students` - Create student
+- `PATCH /api/students/:id` - Update student (UUID)
+- `DELETE /api/students/:id` - Delete student (UUID)
+- `GET /api/students/search` - Search
+- `GET /api/students/status/:status` - Get by status
+- `GET /api/students/universities` - Get universities
+- `GET /api/students/majors` - Get majors
+- `GET /api/students/industries` - Get industries
+- `GET /api/students/skills` - Get skills
+- `POST /api/students/:id/cv` - Upload CV
+- `GET /api/students/:id/cv` - Get CV
+- `DELETE /api/students/:id/cv` - Delete CV
+- `POST /api/students/:id/photo` - Upload photo
+- `GET /api/students/:id/photo` - Get photo
+- `DELETE /api/students/:id/photo` - Delete photo
 
 ---
 
-## API Versioning
+## UUID Format
 
-Current version: **v1.2.0**
+All IDs in the API use **UUID v4** format:
 
-Version history and changelog available in `docs/CHANGELOG.md`.
+```javascript
+// Examples of valid UUIDs:
+"550e8400-e29b-41d4-a716-446655440000"
+"6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+"f47ac10b-58cc-4372-a567-0e02b2c3d479"
+```
 
-## Support
+**Format breakdown:**
+- 8-4-4-4-12 hexadecimal characters
+- Hyphens separate the groups
+- Version 4 (indicated by the 4 in position 14)
+- Variant 10b (indicated by the 8, 9, a, or b in position 19)
 
-For API support and questions:
-- **Documentation**: [docs/API.md](docs/API.md)
-- **Email**: contactrasya@gmail.com
-- **Postman Collection**: `/collection/` directory
+**Validation in JavaScript:**
+```javascript
+function isValidUUID(uuid) {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
 
-## Quick Testing Examples
-
-```bash
-# Health check
-curl http://localhost:3001/health
-
-# Get companies with pagination
-curl "http://localhost:3001/api/companies?page=1&limit=10"
-
-# Search students
-curl "http://localhost:3001/api/students/search?q=python+react"
-
-
-# Get cache status
-curl http://localhost:3001/api/cache/status
+isValidUUID("550e8400-e29b-41d4-a716-446655440000"); // true
+isValidUUID("123"); // false
 ```
 
 ---
 
-*Last updated: October 29, 2025*
-*API Version: 1.0.0*
+*Last Updated: 2025-11-26*
+*API Version: 2.0.0*
+

@@ -3,7 +3,7 @@
  * Adds proper caching headers to API responses for improved performance
  */
 
-const { responseCache } = require('../services/responseCacheService');
+const { responseCache } = require("../services/responseCacheService");
 
 /**
  * Middleware to add cache headers to API responses
@@ -16,7 +16,7 @@ const cacheHeaders = (options = {}) => {
   const {
     maxAge = 2 * 60 * 60, // 2 hours default
     private: isPrivate = false,
-    etag: useETag = true
+    etag: useETag = true,
   } = options;
 
   return (req, res, next) => {
@@ -24,38 +24,38 @@ const cacheHeaders = (options = {}) => {
     const originalJson = res.json;
 
     // Override res.json to add cache headers
-    res.json = function(data) {
+    res.json = function (data) {
       // Add cache control header
       const cacheControl = [
-        isPrivate ? 'private' : 'public',
+        isPrivate ? "private" : "public",
         `max-age=${maxAge}`,
-        'must-revalidate'
-      ].join(', ');
+        "must-revalidate",
+      ].join(", ");
 
-      res.set('Cache-Control', cacheControl);
+      res.set("Cache-Control", cacheControl);
 
       // Add expires header for older browsers
       const expires = new Date();
       expires.setSeconds(expires.getSeconds() + maxAge);
-      res.set('Expires', expires.toUTCString());
+      res.set("Expires", expires.toUTCString());
 
       // Add ETag if enabled and data is available
       if (useETag && data) {
         const eTag = responseCache.generateETag(data);
-        res.set('ETag', eTag);
+        res.set("ETag", eTag);
 
         // Handle If-None-Match for conditional requests
-        const ifNoneMatch = req.get('If-None-Match');
+        const ifNoneMatch = req.get("If-None-Match");
         if (ifNoneMatch && ifNoneMatch === eTag) {
           return res.status(304).end();
         }
       }
 
       // Add Vary header to inform proxies about compression
-      res.set('Vary', 'Accept-Encoding');
+      res.set("Vary", "Accept-Encoding");
 
       // Add content encoding info for debugging
-      res.set('X-Content-Encoding', res.get('Content-Encoding') || 'none');
+      res.set("X-Content-Encoding", res.get("Content-Encoding") || "none");
 
       // Call original json method
       return originalJson.call(this, data);
@@ -72,7 +72,7 @@ const cacheHeaders = (options = {}) => {
 const base64CacheHeaders = cacheHeaders({
   maxAge: 4 * 60 * 60, // 4 hours for base64 data
   private: false,
-  etag: true
+  etag: true,
 });
 
 /**
@@ -82,7 +82,7 @@ const base64CacheHeaders = cacheHeaders({
 const staticCacheHeaders = cacheHeaders({
   maxAge: 24 * 60 * 60, // 24 hours for static lookup data
   private: false,
-  etag: true
+  etag: true,
 });
 
 /**
@@ -92,7 +92,7 @@ const staticCacheHeaders = cacheHeaders({
 const popularCacheHeaders = cacheHeaders({
   maxAge: 12 * 60 * 60, // 12 hours for popular endpoints
   private: false,
-  etag: true
+  etag: true,
 });
 
 /**
@@ -102,7 +102,7 @@ const popularCacheHeaders = cacheHeaders({
 const listCacheHeaders = cacheHeaders({
   maxAge: 6 * 60 * 60, // 6 hours for lists (increased from 1 hour)
   private: false,
-  etag: true
+  etag: true,
 });
 
 /**
@@ -112,16 +112,16 @@ const listCacheHeaders = cacheHeaders({
 const resourceCacheHeaders = cacheHeaders({
   maxAge: 2 * 60 * 60, // 2 hours for individual resources (increased from 30 mins)
   private: false,
-  etag: true
+  etag: true,
 });
 
 /**
  * Middleware to disable caching for dynamic content
  */
 const noCache = (req, res, next) => {
-  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.set('Pragma', 'no-cache');
-  res.set('Expires', '0');
+  res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
   next();
 };
 
@@ -131,11 +131,14 @@ const noCache = (req, res, next) => {
 const cacheStatsHeaders = (req, res, next) => {
   // Add cache stats for debugging
   const stats = responseCache.getStats();
-  res.set('X-Cache-Stats', JSON.stringify({
-    hitRate: Math.round(stats.hitRate * 100) / 100,
-    cachedItems: stats.cache.keys,
-    cacheSize: Math.round(stats.currentCacheSizeBytes / 1024) + 'KB'
-  }));
+  res.set(
+    "X-Cache-Stats",
+    JSON.stringify({
+      hitRate: Math.round(stats.hitRate * 100) / 100,
+      cachedItems: stats.cache.keys,
+      cacheSize: Math.round(stats.currentCacheSizeBytes / 1024) + "KB",
+    })
+  );
 
   next();
 };
@@ -148,5 +151,5 @@ module.exports = {
   listCacheHeaders,
   resourceCacheHeaders,
   noCache,
-  cacheStatsHeaders
+  cacheStatsHeaders,
 };

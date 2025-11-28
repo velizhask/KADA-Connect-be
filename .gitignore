@@ -33,11 +33,9 @@ coverage/
 .mcp.json
 CLAUDE.md
 prd.md
-/docs/GOOGLE_DRIVE_PROXY_SETUP.md
-/docs/POSTMAN-USAGE.md
-/docs/test-google-drive-proxy.js
-/docs/documentation.md
-/collection/KADA-Connect-Staging-Environment.postman_environment.json
+/docs
+/db
+
 
 # Dependency directories
 node_modules/

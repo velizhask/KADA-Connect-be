@@ -2,12 +2,17 @@ const { supabase } = require('../db');
 const { responseCache } = require('./responseCacheService');
 
 class StudentService {
-  async getAllStudents(filters = {}) {
+  async getAllStudents(filters = {}, currentUser = null) {
     try {
       // Add employment status to filters for proper cache key generation
+      // Admin and Student users can see all students, others only "Open to work"
+      const isAdmin = currentUser && currentUser.role === 'admin';
+      const isStudent = currentUser && currentUser.role === 'student';
+
       const cacheFilters = {
         ...filters,
-        employmentStatus: 'Open to work' // Include employment status in cache key
+        employmentStatus: 'all', // We now filter at application level
+        currentUserId: currentUser?.id || 'anonymous'
       };
 
       // Check cache first for list responses
@@ -35,6 +40,8 @@ class StudentService {
           linkedin,
           portfolio_link,
           phone_number,
+          is_visible,
+          batch,
           "timestamp"
         `, { count: 'exact' });
 
@@ -59,9 +66,6 @@ class StudentService {
         query = query.ilike('tech_stack_skills', `%${filters.skills}%`);
       }
 
-      // Filter out employed students - only show "Open to work" students
-      query = query.eq('employment_status', 'Open to work');
-
       // Apply pagination
       const page = parseInt(filters.page) || 1;
       const limit = parseInt(filters.limit) || 20;
@@ -78,16 +82,39 @@ class StudentService {
         throw new Error('Failed to fetch students');
       }
 
+
+      // Filter results consistently
+      // Admin can see all students (including invisible for soft delete)
+      // Students can see all students (including employed for networking) but only visible ones
+
+      const filteredData = data.filter(student => {
+        const isEmployed = student['employment_status'] === 'Employed';
+        const isVisible = student['is_visible'] === true;
+        const isOwnData = currentUser && student.id === currentUser.id;
+
+        // Check employment status
+        if (isEmployed && !isOwnData && !isAdmin && !isStudent) {
+          return false; 
+        }
+
+        // Check visibility
+        if (!isVisible && !isOwnData && !isAdmin) {
+          return false; // Hide invisible students from others
+        }
+
+        return true;
+      });
+
       // Transform data to camelCase for API consistency
-      const transformedData = data.map(student => this.transformStudentDataPublic(student));
+      const transformedData = filteredData.map(student => this.transformStudentDataPublic(student));
 
       const response = {
         students: transformedData,
         pagination: {
           page,
           limit,
-          total: count || 0,
-          totalPages: Math.ceil((count || 0) / limit)
+          total: filteredData.length,
+          totalPages: Math.ceil(filteredData.length / limit)
         }
       };
 
@@ -101,17 +128,19 @@ class StudentService {
     }
   }
 
-  async getStudentById(id) {
+  async getStudentById(id, currentUser = null) {
     try {
       // Check cache first for individual student
+      // Cache key should include current user info to handle different access levels
       const cacheKey = 'getStudentById';
       const cacheParams = {
         id,
+        currentUserId: currentUser?.id || 'anonymous',
         employmentStatus: 'Open to work' // Include employment status in cache key
       };
       const cachedResponse = responseCache.getAPIResponse(cacheKey, cacheParams);
 
-      if (cachedResponse) {
+      if (cachedResponse && cachedResponse.data.id) {
         return cachedResponse.data;
       }
 
@@ -132,6 +161,8 @@ class StudentService {
           linkedin,
           portfolio_link,
           phone_number,
+          is_visible,
+          batch,
           "timestamp"
         `)
         .eq('id', id)
@@ -145,11 +176,26 @@ class StudentService {
         throw new Error('Failed to fetch student');
       }
 
-      // Check if student is employed - if so, don't return their data
-      if (data['employment_status'] === 'Employed') {
-        return null; // Hide employed students
+      // Check if student is employed
+      // Allow access if:
+      // 1. Current user is the student themselves
+      // 2. Current user is an admin
+      // 3. Current user is a student (for networking)
+      const isEmployed = data['employment_status'] === 'Employed';
+      const isOwnData = currentUser && data.id === currentUser.id;
+      const isAdmin = currentUser && currentUser.role === 'admin';
+      const isStudent = currentUser && currentUser.role === 'student';
+
+      if (isEmployed && !isOwnData && !isAdmin && !isStudent) {
+        return null; 
       }
 
+      // Check if student is visible - only admin can see invisible records (for soft delete)
+      if (!data['is_visible'] && !isOwnData && !isAdmin) {
+        return null; // Hide invisible students from others
+      }
+
+      // Transform data for public API
       const transformedData = this.transformStudentDataPublic(data);
 
       // Cache the individual student response
@@ -162,7 +208,7 @@ class StudentService {
     }
   }
 
-  async searchStudents(searchTerm, filters = {}) {
+  async searchStudents(searchTerm, filters = {}, currentUser = null) {
     try {
       // Parse multiple search terms
       const searchTerms = searchTerm.split(/\s+/).filter(term => term.length > 0);
@@ -170,6 +216,10 @@ class StudentService {
       if (searchTerms.length === 0) {
         return [];
       }
+
+      // Determine if current user is a student
+      const isStudent = currentUser && currentUser.role === 'student';
+      const isAdmin = currentUser && currentUser.role === 'admin';
 
       let query = supabase
         .from('students')
@@ -187,7 +237,8 @@ class StudentService {
           profile_photo,
           linkedin,
           portfolio_link,
-          phone_number
+          phone_number,
+          batch
         `);
 
       // Build dynamic OR conditions for multiple search terms
@@ -225,7 +276,16 @@ class StudentService {
       }
 
       // Filter out employed students - only show "Open to work" students
-      query = query.eq('employment_status', 'Open to work');
+      // Students and admins can search all students
+      if (!isStudent && !isAdmin) {
+        query = query.eq('employment_status', 'Open to work');
+      }
+
+      // Filter out invisible students - only show visible ones in search
+      // Only admin can see invisible records
+      if (!isAdmin) {
+        query = query.eq('is_visible', true);
+      }
 
       const { data, error } = await query
         .order('full_name')
@@ -260,7 +320,8 @@ class StudentService {
           preferred_industry,
           tech_stack_skills,
           profile_photo,
-          linkedin
+          linkedin,
+          batch
         `)
         .ilike('status', status)
         .eq('employment_status', 'Open to work') // Only show "Open to work" students
@@ -271,7 +332,10 @@ class StudentService {
         throw new Error('Failed to fetch students by status');
       }
 
-      const transformedResults = data.map(student => this.transformStudentDataPublic(student));
+      // Filter out invisible students
+      const visibleData = data.filter(student => student['is_visible'] === true);
+
+      const transformedResults = visibleData.map(student => this.transformStudentDataPublic(student));
       return transformedResults;
     } catch (error) {
       console.error('[ERROR] StudentService.getStudentsByStatus:', error.message);
@@ -283,8 +347,9 @@ class StudentService {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('university_institution')
+        .select('university_institution, is_visible')
         .eq('employment_status', 'Open to work') // Only include "Open to work" students
+        .eq('is_visible', true) // Only include visible students
         .not('university_institution', 'is', null);
 
       if (error) {
@@ -308,8 +373,9 @@ class StudentService {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('program_major')
+        .select('program_major, is_visible')
         .eq('employment_status', 'Open to work') // Only include "Open to work" students
+        .eq('is_visible', true) // Only include visible students
         .not('program_major', 'is', null);
 
       if (error) {
@@ -333,8 +399,9 @@ class StudentService {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('preferred_industry')
+        .select('preferred_industry, is_visible')
         .eq('employment_status', 'Open to work') // Only include "Open to work" students
+        .eq('is_visible', true) // Only include visible students
         .not('preferred_industry', 'is', null);
 
       if (error) {
@@ -342,10 +409,13 @@ class StudentService {
         throw new Error('Failed to fetch industries');
       }
 
-      // Get unique industries and sort them
-      const industries = [...new Set(data.map(item => item['preferred_industry']))]
-        .filter(Boolean)
-        .sort();
+      // Split industries by common delimiters and get unique values
+      const allIndustries = data.map(item => {
+        const industries = item['preferred_industry'] || '';
+        return industries.split(/[,\/\n|]/).map(industry => industry.trim()).filter(Boolean);
+      }).flat();
+
+      const industries = [...new Set(allIndustries)].sort();
 
       return industries;
     } catch (error) {
@@ -358,8 +428,9 @@ class StudentService {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('tech_stack_skills')
+        .select('tech_stack_skills, is_visible')
         .eq('employment_status', 'Open to work') // Only include "Open to work" students
+        .eq('is_visible', true) // Only include visible students
         .not('tech_stack_skills', 'is', null);
 
       if (error) {
@@ -393,7 +464,8 @@ class StudentService {
       const { data, error } = await supabase
         .from('students')
         .select('status, employment_status, university_institution, program_major, preferred_industry, tech_stack_skills')
-        .eq('employment_status', 'Open to work'); // Only include "Open to work" students in stats
+        .eq('employment_status', 'Open to work') // Only include "Open to work" students in stats
+        .eq('is_visible', true); // Only include visible students in stats
 
       if (error) {
         console.error('[ERROR] Failed to fetch student stats:', error.message);
@@ -472,6 +544,8 @@ class StudentService {
           linkedin,
           portfolio_link,
           phone_number,
+          is_visible,
+          batch,
           "timestamp"
         `)
         .single();
@@ -496,8 +570,12 @@ class StudentService {
 
   async updateStudent(id, updateData) {
     try {
+      console.log('[DEBUG StudentService.updateStudent] ID:', id);
+      console.log('[DEBUG StudentService.updateStudent] Update data received:', updateData);
+
       // Transform camelCase input to snake_case for database
       const dbData = this.transformStudentDataForDB(updateData);
+      console.log('[DEBUG StudentService.updateStudent] Transformed data for DB:', dbData);
 
       const { data, error } = await supabase
         .from('students')
@@ -518,12 +596,20 @@ class StudentService {
           linkedin,
           portfolio_link,
           phone_number,
+          is_visible,
+          batch,
           "timestamp"
         `)
         .single();
 
+      console.log('[DEBUG StudentService.updateStudent] Supabase query result:');
+      console.log('[DEBUG StudentService.updateStudent] Data:', data);
+      console.log('[DEBUG StudentService.updateStudent] Error:', error);
+
       if (error) {
+        console.log('[DEBUG StudentService.updateStudent] Error code:', error.code);
         if (error.code === 'PGRST116') {
+          console.log('[DEBUG StudentService.updateStudent] Student not found, returning null');
           return null; // Student not found
         }
         console.error('[ERROR] Failed to update student:', error.message);
@@ -540,7 +626,10 @@ class StudentService {
         responseCache.clearByTable('students', id);
       }
 
+      console.log('[DEBUG StudentService.updateStudent] About to transform data:', data);
       const transformedData = this.transformStudentData(data);
+      console.log('[DEBUG StudentService.updateStudent] Transformed data:', transformedData);
+      console.log('[DEBUG StudentService.updateStudent] Returning transformed data');
       return transformedData;
     } catch (error) {
       console.error('[ERROR] StudentService.updateStudent:', error.message);
@@ -577,6 +666,8 @@ class StudentService {
           linkedin,
           portfolio_link,
           phone_number,
+          is_visible,
+          batch,
           "timestamp"
         `)
         .single();
@@ -641,7 +732,7 @@ class StudentService {
   }
 
   transformStudentDataForDB(studentData) {
-    return {
+    const dbData = {
       'full_name': studentData.fullName,
       'status': studentData.status,
       'employment_status': studentData.employmentStatus,
@@ -654,8 +745,12 @@ class StudentService {
       'profile_photo': studentData.profilePhoto || null,
       'linkedin': studentData.linkedin || null,
       'portfolio_link': studentData.portfolioLink || null,
-      'phone_number': studentData.phoneNumber ? parseInt(studentData.phoneNumber) : null
+      'phone_number': (studentData.phoneNumber || studentData.phone) ? parseInt(studentData.phoneNumber || studentData.phone) : null,
+      'is_visible': studentData.isVisible !== undefined ? studentData.isVisible : true,
+      'batch': studentData.batch || null
     };
+
+    return dbData;
   }
 
   transformStudentDataForDBPartial(patchData) {
@@ -702,6 +797,16 @@ class StudentService {
     if (patchData.phoneNumber !== undefined) {
       dbData['phone_number'] = patchData.phoneNumber ? parseInt(patchData.phoneNumber) : null;
     }
+    // Accept simplified field name too
+    if (patchData.phone !== undefined) {
+      dbData['phone_number'] = patchData.phone ? parseInt(patchData.phone) : null;
+    }
+    if (patchData.isVisible !== undefined) {
+      dbData['is_visible'] = patchData.isVisible;
+    }
+    if (patchData.batch !== undefined) {
+      dbData['batch'] = patchData.batch || null;
+    }
 
     return dbData;
   }
@@ -726,6 +831,7 @@ class StudentService {
       profilePhoto: student['profile_photo'],
       linkedin: student['linkedin'],
       portfolioLink: student['portfolio_link'],
+      batch: student['batch'],
       timestamp: student['timestamp']
     };
   }
@@ -760,6 +866,7 @@ class StudentService {
       linkedin: student['linkedin'],
       portfolioLink: student['portfolio_link'],
       phone: student['phone_number'],
+      batch: student['batch'],
       timestamp: student['timestamp']
     };
   }

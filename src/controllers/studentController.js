@@ -1,4 +1,6 @@
 const studentService = require('../services/studentService');
+const authService = require('../services/authService');
+const { supabase } = require('../db');
 
 class StudentController {
   async getStudents(req, res, next) {
@@ -20,7 +22,8 @@ class StudentController {
         }
       });
 
-      const result = await studentService.getAllStudents(filters);
+      // Pass current user context for proper access control
+      const result = await studentService.getAllStudents(filters, req.user);
 
       res.status(200).json({
         success: true,
@@ -37,7 +40,7 @@ class StudentController {
     try {
       const { id } = req.params;
 
-      if (!id || isNaN(id)) {
+      if (!id) {
         return res.status(400).json({
           success: false,
           message: 'Valid student ID is required',
@@ -45,7 +48,8 @@ class StudentController {
         });
       }
 
-      const student = await studentService.getStudentById(parseInt(id));
+      // Pass current user context so the service can determine access rights
+      const student = await studentService.getStudentById(id, req.user);
 
       if (!student) {
         return res.status(404).json({
@@ -100,7 +104,7 @@ class StudentController {
         }
       });
 
-      const students = await studentService.searchStudents(q.trim(), filters);
+      const students = await studentService.searchStudents(q.trim(), filters, req.user);
 
       res.status(200).json({
         success: true,
@@ -224,6 +228,10 @@ class StudentController {
   async createStudent(req, res, next) {
     try {
       const studentData = req.body;
+      const currentUser = req.user;
+
+      // Set the user_id to the authenticated user's ID for ownership
+      studentData.user_id = currentUser.id;
 
       const newStudent = await studentService.createStudent(studentData);
 
@@ -242,7 +250,7 @@ class StudentController {
       const { id } = req.params;
       const updateData = req.body;
 
-      if (!id || isNaN(id)) {
+      if (!id) {
         return res.status(400).json({
           success: false,
           message: 'Valid student ID is required',
@@ -250,15 +258,40 @@ class StudentController {
         });
       }
 
-      const updatedStudent = await studentService.updateStudent(parseInt(id), updateData);
+      // Authorization check: user must be admin or own the resource
+      const currentUser = req.user;
 
-      if (!updatedStudent) {
+      // Check if user is admin or owns this student profile
+      const student = await studentService.getStudentById(id);
+      if (!student) {
         return res.status(404).json({
           success: false,
           message: 'Student not found',
           data: null
         });
       }
+
+      // Allow if admin or if user owns this student profile
+      const isOwner = student.user_id === currentUser.id;
+
+      // If not owner, check if user is admin
+      if (!isOwner) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', currentUser.id)
+          .single();
+
+        if (!userData || userData.role !== 'admin') {
+          return res.status(403).json({
+            success: false,
+            message: 'You can only update your own student profile',
+            data: null
+          });
+        }
+      }
+
+      const updatedStudent = await studentService.updateStudent(id, updateData);
 
       res.status(200).json({
         success: true,
@@ -275,7 +308,7 @@ class StudentController {
       const { id } = req.params;
       const patchData = req.body;
 
-      if (!id || isNaN(id)) {
+      if (!id) {
         return res.status(400).json({
           success: false,
           message: 'Valid student ID is required',
@@ -292,15 +325,40 @@ class StudentController {
         });
       }
 
-      const patchedStudent = await studentService.patchStudent(parseInt(id), patchData);
+      // Authorization check: user must be admin or own the resource
+      const currentUser = req.user;
 
-      if (!patchedStudent) {
+      // Check if user is admin or owns this student profile
+      const student = await studentService.getStudentById(id);
+      if (!student) {
         return res.status(404).json({
           success: false,
           message: 'Student not found',
           data: null
         });
       }
+
+      // Allow if admin or if user owns this student profile
+      const isOwner = student.user_id === currentUser.id;
+
+      // If not owner, check if user is admin
+      if (!isOwner) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', currentUser.id)
+          .single();
+
+        if (!userData || userData.role !== 'admin') {
+          return res.status(403).json({
+            success: false,
+            message: 'You can only update your own student profile',
+            data: null
+          });
+        }
+      }
+
+      const patchedStudent = await studentService.patchStudent(id, patchData);
 
       res.status(200).json({
         success: true,
@@ -316,7 +374,7 @@ class StudentController {
     try {
       const { id } = req.params;
 
-      if (!id || isNaN(id)) {
+      if (!id) {
         return res.status(400).json({
           success: false,
           message: 'Valid student ID is required',
@@ -324,15 +382,33 @@ class StudentController {
         });
       }
 
-      const result = await studentService.deleteStudent(parseInt(id));
+      // Authorization check: user must be admin or own the resource
+      const currentUser = req.user;
+      const userRole = await authService.getUserRole(currentUser);
 
-      if (!result) {
+      // Check if user is admin or owns this student profile
+      const student = await studentService.getStudentById(id);
+      if (!student) {
         return res.status(404).json({
           success: false,
           message: 'Student not found',
           data: null
         });
       }
+
+      // Allow if admin or if user owns this student profile
+      const isOwner = student.user_id === currentUser.id;
+      const isAdmin = userRole === 'admin';
+
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only delete your own student profile',
+          data: null
+        });
+      }
+
+      const result = await studentService.deleteStudent(id);
 
       res.status(200).json({
         success: true,
@@ -344,91 +420,6 @@ class StudentController {
     }
   }
 
-  async validateCV(req, res, next) {
-    try {
-      const { cvUrl } = req.body;
-
-      if (!cvUrl) {
-        return res.status(400).json({
-          success: false,
-          message: 'CV URL is required',
-          data: null
-        });
-      }
-
-      // Basic URL validation for common file types
-      const urlPattern = /^https?:\/\/.+\.(pdf|doc|docx)(\?.*)?$/i;
-      const isValidUrl = urlPattern.test(cvUrl.trim());
-
-      // Check for common patterns
-      const isGoogleDriveUrl = cvUrl.includes('drive.google.com') || cvUrl.includes('docs.google.com');
-      const isDropboxUrl = cvUrl.includes('dropbox.com');
-      const isOneDriveUrl = cvUrl.includes('1drv.ms');
-
-      res.status(200).json({
-        success: true,
-        message: 'CV validation completed',
-        data: {
-          isValid: isValidUrl || isGoogleDriveUrl || isDropboxUrl || isOneDriveUrl,
-          recommendations: {
-            maxSize: '10MB',
-            formats: ['pdf', 'doc', 'docx'],
-            allowedHosts: [
-              'Google Drive',
-              'Dropbox',
-              'OneDrive',
-              'Direct URL'
-            ]
-          }
-        }
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async validatePhoto(req, res, next) {
-    try {
-      const { photoUrl } = req.body;
-
-      if (!photoUrl) {
-        return res.status(400).json({
-          success: false,
-          message: 'Photo URL is required',
-          data: null
-        });
-      }
-
-      // Basic URL validation for images
-      const urlPattern = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i;
-      const isValidUrl = urlPattern.test(photoUrl.trim());
-
-      // Check for common patterns
-      const isGoogleDriveUrl = photoUrl.includes('drive.google.com');
-      const isDropboxUrl = photoUrl.includes('dropbox.com');
-      const isOneDriveUrl = photoUrl.includes('1drv.ms');
-
-      res.status(200).json({
-        success: true,
-        message: 'Photo validation completed',
-        data: {
-          isValid: isValidUrl || isGoogleDriveUrl || isDropboxUrl || isOneDriveUrl,
-          recommendations: {
-            maxSize: '5MB',
-            formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-            allowedHosts: [
-              'Google Drive',
-              'Dropbox',
-              'OneDrive',
-              'Direct URL'
-            ]
-          }
-        }
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
 }
 
 module.exports = new StudentController();
