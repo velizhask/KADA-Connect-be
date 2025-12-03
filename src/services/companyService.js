@@ -647,7 +647,7 @@ class CompanyService {
       'contact_email': companyData.contactEmailAddress || companyData.contactEmail || null,
       'contact_phone_number': companyData.contactPhoneNumber || companyData.contactPhone || null,
       'contact_info_visible': (companyData.visibleContactInfo || companyData.contactInfoVisible) || false,
-      'is_visible': companyData.isVisible !== undefined ? companyData.isVisible : true
+      'is_visible': companyData.isVisible !== undefined ? companyData.isVisible : false
     };
 
     // Only include email_address if it exists (handle potential missing field)
@@ -754,8 +754,7 @@ class CompanyService {
       contactPerson: company['contact_person_name'],
       contactEmail: isContactInfoVisible ? company['contact_email'] : null,
       // Phone number excluded for public API privacy
-      contactInfoVisible: isContactInfoVisible,
-      isVisible: company['is_visible']
+      contactInfoVisible: isContactInfoVisible
     };
   }
 
@@ -783,8 +782,7 @@ class CompanyService {
       contactPerson: company['contact_person_name'],
       contactEmail: isContactInfoVisible ? company['contact_email'] : null,
       contactPhone: isContactInfoVisible ? company['contact_phone_number'] : null,
-      contactInfoVisible: isContactInfoVisible,
-      isVisible: company['is_visible']
+      contactInfoVisible: isContactInfoVisible
     };
   }
 
