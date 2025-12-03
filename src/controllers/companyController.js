@@ -147,10 +147,11 @@ class CompanyController {
       const companyData = req.body;
       const currentUser = req.user;
 
-      // Set the user_id to the authenticated user's ID for ownership
-      companyData.user_id = currentUser.id;
+      // Explicitly set the ID to match the authenticated user's UUID
+      // This is needed because the backend uses service role key
+      companyData.id = currentUser.id;
 
-      const newCompany = await companyService.createCompany(companyData);
+      const newCompany = await companyService.createCompany(companyData, req);
 
       res.status(201).json({
         success: true,
@@ -206,7 +207,7 @@ class CompanyController {
         }
       }
 
-      const updatedCompany = await companyService.updateCompany(id, updateData);
+      const updatedCompany = await companyService.updateCompany(id, updateData, req);
 
       res.status(200).json({
         success: true,
@@ -270,7 +271,7 @@ class CompanyController {
         }
       }
 
-      const patchedCompany = await companyService.patchCompany(id, patchData);
+      const patchedCompany = await companyService.patchCompany(id, patchData, req);
 
       res.status(200).json({
         success: true,
@@ -318,7 +319,7 @@ class CompanyController {
         });
       }
 
-      const result = await companyService.deleteCompany(id);
+      const result = await companyService.deleteCompany(id, req);
 
       res.status(200).json({
         success: true,
