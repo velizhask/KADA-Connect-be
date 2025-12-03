@@ -34,7 +34,7 @@ CREATE TABLE public.students (
   email_address text,
   employment_status text,
   id uuid NOT NULL,
-  is_visible boolean NOT NULL DEFAULT true,
+  is_visible boolean NOT NULL DEFAULT false,
   batch text CHECK (batch = ANY (ARRAY['Batch 1'::text, 'Batch 2'::text, 'Batch 3'::text)),
   CONSTRAINT students_pkey PRIMARY KEY (id)
   -- Note: No user_id column - linking is via students.id = users.id
@@ -57,7 +57,7 @@ CREATE TABLE public.companies (
   contact_info_visible boolean,
   company_logo_drive text,
   id uuid NOT NULL,
-  is_visible boolean NOT NULL DEFAULT true,
+  is_visible boolean NOT NULL DEFAULT false,
   CONSTRAINT companies_pkey PRIMARY KEY (id)
   -- Note: No user_id column - linking is via companies.id = users.id
   -- id is set via BEFORE INSERT trigger to match auth.uid()

@@ -883,7 +883,7 @@ class StudentService {
       'linkedin': studentData.linkedin || null,
       'portfolio_link': studentData.portfolioLink || null,
       'phone_number': (studentData.phoneNumber || studentData.phone) ? parseInt(studentData.phoneNumber || studentData.phone) : null,
-      'is_visible': studentData.isVisible !== undefined ? studentData.isVisible : true,
+      'is_visible': studentData.isVisible !== undefined ? studentData.isVisible : false,
       'batch': studentData.batch || null
     };
 
