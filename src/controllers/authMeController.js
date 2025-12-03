@@ -54,10 +54,10 @@ const updateProfile = async (req, res, next) => {
 
     if (role === 'student') {
       // Use patchStudent for partial updates to avoid nulling other fields
-      profile = await studentService.patchStudent(userId, updateData);
+      profile = await studentService.patchStudent(userId, updateData, req);
     } else if (role === 'company') {
       // Use patchCompany for partial updates to avoid nulling other fields
-      profile = await companyService.patchCompany(userId, updateData);
+      profile = await companyService.patchCompany(userId, updateData, req);
     } else {
       return res.status(400).json({
         success: false,
@@ -123,7 +123,7 @@ const uploadCV = async (req, res, next) => {
     // Update student record with CV file URL (partial update to avoid nulling other fields)
     const updatedStudent = await studentService.patchStudent(userId, {
       cvUpload: fileRecord.url
-    });
+    }, req);
 
     console.log('[UPLOAD] Student update result:', updatedStudent);
     console.log('[UPLOAD] Type of updatedStudent:', typeof updatedStudent);
@@ -187,7 +187,7 @@ const uploadPhoto = async (req, res, next) => {
     // Update student record with photo URL (partial update to avoid nulling other fields)
     const updatedStudent = await studentService.patchStudent(userId, {
       profilePhoto: fileRecord.url
-    });
+    }, req);
 
     console.log('[UPLOAD] Student update result:', updatedStudent);
     console.log('[UPLOAD] Type of updatedStudent:', typeof updatedStudent);
@@ -251,7 +251,7 @@ const uploadLogo = async (req, res, next) => {
     // Update company record with logo URL (partial update to avoid nulling other fields)
     const updatedCompany = await companyService.patchCompany(userId, {
       logo: fileRecord.url
-    });
+    }, req);
 
     console.log('[UPLOAD] Company update result:', updatedCompany);
     console.log('[UPLOAD] Type of updatedCompany:', typeof updatedCompany);

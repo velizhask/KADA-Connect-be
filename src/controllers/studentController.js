@@ -230,10 +230,11 @@ class StudentController {
       const studentData = req.body;
       const currentUser = req.user;
 
-      // Set the user_id to the authenticated user's ID for ownership
-      studentData.user_id = currentUser.id;
+      // Explicitly set the ID to match the authenticated user's UUID
+      // This is needed because the backend uses service role key
+      studentData.id = currentUser.id;
 
-      const newStudent = await studentService.createStudent(studentData);
+      const newStudent = await studentService.createStudent(studentData, req);
 
       res.status(201).json({
         success: true,
@@ -291,7 +292,7 @@ class StudentController {
         }
       }
 
-      const updatedStudent = await studentService.updateStudent(id, updateData);
+      const updatedStudent = await studentService.updateStudent(id, updateData, req);
 
       res.status(200).json({
         success: true,
@@ -358,7 +359,7 @@ class StudentController {
         }
       }
 
-      const patchedStudent = await studentService.patchStudent(id, patchData);
+      const patchedStudent = await studentService.patchStudent(id, patchData, req);
 
       res.status(200).json({
         success: true,
@@ -408,7 +409,7 @@ class StudentController {
         });
       }
 
-      const result = await studentService.deleteStudent(id);
+      const result = await studentService.deleteStudent(id, req);
 
       res.status(200).json({
         success: true,

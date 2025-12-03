@@ -1,5 +1,6 @@
 const { supabase } = require('../db');
 const { responseCache } = require('./responseCacheService');
+const logService = require('./logService');
 
 class StudentService {
   async getAllStudents(filters = {}, currentUser = null) {
@@ -521,7 +522,7 @@ class StudentService {
     }
   }
 
-  async createStudent(studentData) {
+  async createStudent(studentData, req = null) {
     try {
       // Transform camelCase input to snake_case for database
       const dbData = this.transformStudentDataForDB(studentData);
@@ -555,6 +556,19 @@ class StudentService {
         throw new Error(`Failed to create student: ${error.message}`);
       }
 
+      // Log successful CREATE operation
+      if (req) {
+        await logService.logCreate({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'student',
+          resourceId: data.id,
+          newValues: data,
+          request: req,
+          routePath: req.path
+        });
+      }
+
       // console.log('[SUCCESS] Student created successfully with ID:', data.id);
 
       // Clear cache for new student (especially if employment status affects visibility)
@@ -563,15 +577,37 @@ class StudentService {
       const transformedData = this.transformStudentData(data);
       return transformedData;
     } catch (error) {
+      // Log failed CREATE operation
+      if (req) {
+        await logService.logError({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'student',
+          resourceId: null,
+          operation: 'CREATE',
+          errorMessage: error.message,
+          request: req,
+          routePath: req?.path,
+          newValues: studentData
+        });
+      }
+
       console.error('[ERROR] StudentService.createStudent:', error.message);
       throw error;
     }
   }
 
-  async updateStudent(id, updateData) {
+  async updateStudent(id, updateData, req = null) {
     try {
       console.log('[DEBUG StudentService.updateStudent] ID:', id);
       console.log('[DEBUG StudentService.updateStudent] Update data received:', updateData);
+
+      // Get old values for logging
+      const { data: oldData } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', id)
+        .single();
 
       // Transform camelCase input to snake_case for database
       const dbData = this.transformStudentDataForDB(updateData);
@@ -616,6 +652,20 @@ class StudentService {
         throw new Error(`Failed to update student: ${error.message}`);
       }
 
+      // Log successful UPDATE operation
+      if (req && oldData) {
+        await logService.logUpdate({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'student',
+          resourceId: data.id,
+          oldValues: oldData,
+          newValues: data,
+          request: req,
+          routePath: req.path
+        });
+      }
+
       // console.log('[SUCCESS] Student updated successfully with ID:', data.id);
 
       // Clear cache if employment status was updated
@@ -632,12 +682,27 @@ class StudentService {
       console.log('[DEBUG StudentService.updateStudent] Returning transformed data');
       return transformedData;
     } catch (error) {
+      // Log failed UPDATE operation
+      if (req) {
+        await logService.logError({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'student',
+          resourceId: typeof id === 'string' && id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i) ? id : null,
+          operation: 'UPDATE',
+          errorMessage: error.message,
+          request: req,
+          routePath: req.path,
+          newValues: updateData
+        });
+      }
+
       console.error('[ERROR] StudentService.updateStudent:', error.message);
       throw error;
     }
   }
 
-  async patchStudent(id, patchData) {
+  async patchStudent(id, patchData, req = null) {
     try {
       // Transform camelCase input to snake_case for database (partial update)
       const dbData = this.transformStudentDataForDBPartial(patchData);
@@ -646,6 +711,13 @@ class StudentService {
       if (Object.keys(dbData).length === 0) {
         throw new Error('No valid fields provided for partial update');
       }
+
+      // Get old values for logging
+      const { data: oldData } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', id)
+        .single();
 
       const { data, error } = await supabase
         .from('students')
@@ -680,6 +752,20 @@ class StudentService {
         throw new Error(`Failed to patch student: ${error.message}`);
       }
 
+      // Log successful UPDATE operation
+      if (req && oldData) {
+        await logService.logUpdate({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'student',
+          resourceId: data.id,
+          oldValues: oldData,
+          newValues: data,
+          request: req,
+          routePath: req.path
+        });
+      }
+
       // console.log('[SUCCESS] Student patched successfully with ID:', data.id);
 
       // Clear cache if employment status was updated
@@ -687,19 +773,41 @@ class StudentService {
         responseCache.clearEmploymentStatusCache('Student employment status patch');
       } else {
         // For non-employment status patches, clear only student cache
-        responseCache.clearByTable('students', id);
+        responseCache.clearByTable('students', data.id);
       }
 
       const transformedData = this.transformStudentData(data);
       return transformedData;
     } catch (error) {
+      // Log failed UPDATE operation
+      if (req) {
+        await logService.logError({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'student',
+          resourceId: typeof id === 'string' && id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i) ? id : null,
+          operation: 'UPDATE',
+          errorMessage: error.message,
+          request: req,
+          routePath: req.path,
+          newValues: patchData
+        });
+      }
+
       console.error('[ERROR] StudentService.patchStudent:', error.message);
       throw error;
     }
   }
 
-  async deleteStudent(id) {
+  async deleteStudent(id, req = null) {
     try {
+      // Get old values for logging before deletion
+      const { data: oldData } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', id)
+        .single();
+
       const { data, error } = await supabase
         .from('students')
         .delete()
@@ -715,6 +823,19 @@ class StudentService {
         throw new Error(`Failed to delete student: ${error.message}`);
       }
 
+      // Log successful DELETE operation
+      if (req && oldData) {
+        await logService.logDelete({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'student',
+          resourceId: oldData.id,
+          oldValues: oldData,
+          request: req,
+          routePath: req.path
+        });
+      }
+
       // console.log('[SUCCESS] Student deleted successfully with ID:', data.id);
 
       // Clear cache for deleted student
@@ -726,6 +847,21 @@ class StudentService {
         message: 'Student deleted successfully'
       };
     } catch (error) {
+      // Log failed DELETE operation
+      if (req) {
+        await logService.logError({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'student',
+          resourceId: typeof id === 'string' && id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i) ? id : null,
+          operation: 'DELETE',
+          errorMessage: error.message,
+          request: req,
+          routePath: req.path,
+          newValues: null
+        });
+      }
+
       console.error('[ERROR] StudentService.deleteStudent:', error.message);
       throw error;
     }
@@ -733,6 +869,7 @@ class StudentService {
 
   transformStudentDataForDB(studentData) {
     const dbData = {
+      'id': studentData.id,
       'full_name': studentData.fullName,
       'status': studentData.status,
       'employment_status': studentData.employmentStatus,
@@ -755,6 +892,9 @@ class StudentService {
 
   transformStudentDataForDBPartial(patchData) {
     const dbData = {};
+
+    // Update timestamp on any partial update
+    dbData['timestamp'] = new Date().toISOString();
 
     // Only include fields that are explicitly provided (not undefined)
     if (patchData.fullName !== undefined) {
@@ -794,18 +934,15 @@ class StudentService {
     if (patchData.portfolioLink !== undefined) {
       dbData['portfolio_link'] = patchData.portfolioLink || null;
     }
-    if (patchData.phoneNumber !== undefined) {
-      dbData['phone_number'] = patchData.phoneNumber ? parseInt(patchData.phoneNumber) : null;
-    }
-    // Accept simplified field name too
-    if (patchData.phone !== undefined) {
-      dbData['phone_number'] = patchData.phone ? parseInt(patchData.phone) : null;
+    if (patchData.phoneNumber !== undefined || patchData.phone !== undefined) {
+      const phoneValue = patchData.phoneNumber || patchData.phone;
+      dbData['phone_number'] = phoneValue ? parseInt(phoneValue) : null;
     }
     if (patchData.isVisible !== undefined) {
       dbData['is_visible'] = patchData.isVisible;
     }
     if (patchData.batch !== undefined) {
-      dbData['batch'] = patchData.batch || null;
+      dbData['batch'] = patchData.batch;
     }
 
     return dbData;

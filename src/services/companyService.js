@@ -1,5 +1,6 @@
 const { supabase } = require('../db');
 const { responseCache } = require('./responseCacheService');
+const logService = require('./logService');
 
 class CompanyService {
   async getAllCompanies(filters = {}) {
@@ -293,7 +294,7 @@ class CompanyService {
     }
   }
 
-  async createCompany(companyData) {
+  async createCompany(companyData, req = null) {
     try {
       // Transform camelCase input to snake_case for database
       const dbData = this.transformCompanyDataForDB(companyData);
@@ -323,6 +324,19 @@ class CompanyService {
         throw new Error(`Failed to create company: ${error.message}`);
       }
 
+      // Log successful CREATE operation
+      if (req) {
+        await logService.logCreate({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'company',
+          resourceId: data.id,
+          newValues: data,
+          request: req,
+          routePath: req.path
+        });
+      }
+
       // console.log('[SUCCESS] Company created successfully with ID:', data.id);
 
       // Clear cache to ensure new company appears immediately
@@ -331,15 +345,37 @@ class CompanyService {
       const transformedData = this.transformCompanyData(data);
       return transformedData;
     } catch (error) {
+      // Log failed CREATE operation
+      if (req) {
+        await logService.logError({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'company',
+          resourceId: null,
+          operation: 'CREATE',
+          errorMessage: error.message,
+          request: req,
+          routePath: req?.path,
+          newValues: companyData
+        });
+      }
+
       console.error('[ERROR] CompanyService.createCompany:', error.message);
       throw error;
     }
   }
 
-  async updateCompany(id, updateData) {
+  async updateCompany(id, updateData, req = null) {
     try {
       console.log('[DEBUG CompanyService.updateCompany] ID:', id);
       console.log('[DEBUG CompanyService.updateCompany] Update data received:', updateData);
+
+      // Get old values for logging
+      const { data: oldData } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', id)
+        .single();
 
       // Transform camelCase input to snake_case for database
       const dbData = this.transformCompanyDataForDB(updateData);
@@ -362,7 +398,8 @@ class CompanyService {
           contact_email,
           contact_phone_number,
           contact_info_visible,
-          is_visible
+          is_visible,
+          timestamp
         `)
         .single();
 
@@ -381,6 +418,20 @@ class CompanyService {
         throw new Error(`Failed to update company: ${error.message}`);
       }
 
+      // Log successful UPDATE operation
+      if (req && oldData) {
+        await logService.logUpdate({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'company',
+          resourceId: data.id,
+          oldValues: oldData,
+          newValues: data,
+          request: req,
+          routePath: req.path
+        });
+      }
+
       // console.log('[SUCCESS] Company updated successfully with ID:', data.id);
 
       // Clear cache to ensure updated company appears immediately
@@ -392,12 +443,27 @@ class CompanyService {
       console.log('[DEBUG CompanyService.updateCompany] Returning transformed data');
       return transformedData;
     } catch (error) {
+      // Log failed UPDATE operation
+      if (req) {
+        await logService.logError({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'company',
+          resourceId: typeof id === 'string' && id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i) ? id : null,
+          operation: 'UPDATE',
+          errorMessage: error.message,
+          request: req,
+          routePath: req.path,
+          newValues: updateData
+        });
+      }
+
       console.error('[ERROR] CompanyService.updateCompany:', error.message);
       throw error;
     }
   }
 
-  async patchCompany(id, patchData) {
+  async patchCompany(id, patchData, req = null) {
     try {
       // Transform camelCase input to snake_case for database (partial update)
       const dbData = this.transformCompanyDataForDBPartial(patchData);
@@ -410,6 +476,13 @@ class CompanyService {
       if (Object.keys(dbData).length === 0) {
         throw new Error('No valid fields provided for partial update');
       }
+
+      // Get old values for logging
+      const { data: oldData } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', id)
+        .single();
 
       // Try alternative approach: use individual field updates to avoid JSON conflicts
       const updatePromises = [];
@@ -436,7 +509,8 @@ class CompanyService {
           contact_email,
           contact_phone_number,
           contact_info_visible,
-          is_visible
+          is_visible,
+          timestamp
         `)
         .single();
 
@@ -450,6 +524,20 @@ class CompanyService {
         throw new Error(`Failed to patch company: ${error.message}`);
       }
 
+      // Log successful UPDATE operation
+      if (req && oldData) {
+        await logService.logUpdate({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'company',
+          resourceId: data.id,
+          oldValues: oldData,
+          newValues: data,
+          request: req,
+          routePath: req.path
+        });
+      }
+
       console.log('[SUCCESS] Company patched successfully with ID:', data.id);
       console.log('[SUCCESS] Returned data:', data);
 
@@ -459,13 +547,35 @@ class CompanyService {
       const transformedData = this.transformCompanyData(data);
       return transformedData;
     } catch (error) {
+      // Log failed UPDATE operation
+      if (req) {
+        await logService.logError({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'company',
+          resourceId: typeof id === 'string' && id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i) ? id : null,
+          operation: 'UPDATE',
+          errorMessage: error.message,
+          request: req,
+          routePath: req.path,
+          newValues: patchData
+        });
+      }
+
       console.error('[ERROR] CompanyService.patchCompany:', error.message);
       throw error;
     }
   }
 
-  async deleteCompany(id) {
+  async deleteCompany(id, req = null) {
     try {
+      // Get old values for logging before deletion
+      const { data: oldData } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', id)
+        .single();
+
       const { data, error } = await supabase
         .from('companies')
         .delete()
@@ -481,6 +591,19 @@ class CompanyService {
         throw new Error(`Failed to delete company: ${error.message}`);
       }
 
+      // Log successful DELETE operation
+      if (req && oldData) {
+        await logService.logDelete({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'company',
+          resourceId: oldData.id,
+          oldValues: oldData,
+          request: req,
+          routePath: req.path
+        });
+      }
+
       // Clear cache to ensure deleted company is removed immediately
       responseCache.clearByTable('companies', id);
 
@@ -490,6 +613,21 @@ class CompanyService {
         message: 'Company deleted successfully'
       };
     } catch (error) {
+      // Log failed DELETE operation
+      if (req) {
+        await logService.logError({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'company',
+          resourceId: typeof id === 'string' && id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i) ? id : null,
+          operation: 'DELETE',
+          errorMessage: error.message,
+          request: req,
+          routePath: req.path,
+          newValues: null
+        });
+      }
+
       console.error('[ERROR] CompanyService.deleteCompany:', error.message);
       throw error;
     }
@@ -497,6 +635,7 @@ class CompanyService {
 
   transformCompanyDataForDB(companyData) {
     const dbData = {
+      'id': companyData.id,
       'company_name': companyData.companyName,
       'company_summary_description': companyData.companySummary,
       'industry_sector': companyData.industry,
@@ -521,6 +660,9 @@ class CompanyService {
 
   transformCompanyDataForDBPartial(patchData) {
     const dbData = {};
+
+    // Update timestamp on any partial update
+    dbData['timestamp'] = new Date().toISOString();
 
     // Only include fields that are explicitly provided (not undefined)
     if (patchData.emailAddress !== undefined) {

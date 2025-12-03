@@ -10,6 +10,7 @@ const helmet = require("helmet");
 const compression = require("compression");
 const { testConnection } = require("./db");
 const { realtimeService } = require("./services/realtimeService");
+const crudLogger = require("./middlewares/crudLogger");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -61,6 +62,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// CRUD logging middleware - attaches request ID and extracts context
+app.use(crudLogger);
+
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.status(200).json({
@@ -92,6 +96,7 @@ const studentRoutes = require("./routes/students");
 const lookupRoutes = require("./routes/lookup");
 const authRoutes = require("./routes/auth");
 const authMeRoutes = require("./routes/authMe");
+const adminRoutes = require("./routes/admin");
 
 // Import middleware
 const {
@@ -193,6 +198,7 @@ app.use("/api/students", studentRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/auth/me", authMeRoutes);
 app.use("/api", lookupRoutes);
+app.use("/api/admin", adminRoutes);
 
 // 404 handler
 app.use(notFoundHandler);
