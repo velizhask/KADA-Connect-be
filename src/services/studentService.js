@@ -41,6 +41,7 @@ class StudentService {
           linkedin,
           portfolio_link,
           phone_number,
+          email_address,
           is_visible,
           batch,
           "timestamp"
@@ -162,6 +163,7 @@ class StudentService {
           linkedin,
           portfolio_link,
           phone_number,
+          email_address,
           is_visible,
           batch,
           "timestamp"
@@ -239,6 +241,7 @@ class StudentService {
           linkedin,
           portfolio_link,
           phone_number,
+          email_address,
           batch
         `);
 
@@ -322,6 +325,7 @@ class StudentService {
           tech_stack_skills,
           profile_photo,
           linkedin,
+          email_address,
           batch
         `)
         .ilike('status', status)
@@ -545,6 +549,7 @@ class StudentService {
           linkedin,
           portfolio_link,
           phone_number,
+          email_address,
           is_visible,
           batch,
           "timestamp"
@@ -632,6 +637,7 @@ class StudentService {
           linkedin,
           portfolio_link,
           phone_number,
+          email_address,
           is_visible,
           batch,
           "timestamp"
@@ -738,6 +744,7 @@ class StudentService {
           linkedin,
           portfolio_link,
           phone_number,
+          email_address,
           is_visible,
           batch,
           "timestamp"
@@ -883,6 +890,7 @@ class StudentService {
       'linkedin': studentData.linkedin || null,
       'portfolio_link': studentData.portfolioLink || null,
       'phone_number': (studentData.phoneNumber || studentData.phone) ? parseInt(studentData.phoneNumber || studentData.phone) : null,
+      'email_address': studentData.email || null,
       'is_visible': studentData.isVisible !== undefined ? studentData.isVisible : false,
       'batch': studentData.batch || null
     };
@@ -938,6 +946,9 @@ class StudentService {
       const phoneValue = patchData.phoneNumber || patchData.phone;
       dbData['phone_number'] = phoneValue ? parseInt(phoneValue) : null;
     }
+    if (patchData.email !== undefined) {
+      dbData['email_address'] = patchData.email || null;
+    }
     if (patchData.isVisible !== undefined) {
       dbData['is_visible'] = patchData.isVisible;
     }
@@ -968,6 +979,7 @@ class StudentService {
       profilePhoto: student['profile_photo'],
       linkedin: student['linkedin'],
       portfolioLink: student['portfolio_link'],
+      email: student['email_address'],
       batch: student['batch'],
       timestamp: student['timestamp']
     };
@@ -1003,6 +1015,7 @@ class StudentService {
       linkedin: student['linkedin'],
       portfolioLink: student['portfolio_link'],
       phone: student['phone_number'],
+      email: student['email_address'],
       batch: student['batch'],
       timestamp: student['timestamp']
     };

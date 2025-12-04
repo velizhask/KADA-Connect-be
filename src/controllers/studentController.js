@@ -234,6 +234,9 @@ class StudentController {
       // This is needed because the backend uses service role key
       studentData.id = currentUser.id;
 
+      // Automatically populate email from authenticated user
+      studentData.email = currentUser.email;
+
       const newStudent = await studentService.createStudent(studentData, req);
 
       res.status(201).json({

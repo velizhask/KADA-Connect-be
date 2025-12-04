@@ -101,6 +101,7 @@ class AuthController {
             linkedin,
             portfolio_link,
             phone_number,
+            email_address,
             batch,
             timestamp
           `)
@@ -109,6 +110,11 @@ class AuthController {
 
         if (!studentError && studentData) {
           profile = studentService.transformStudentData(studentData);
+
+          // Inject email from auth context if not in database (for existing students)
+          if (!profile.email && response.user.email) {
+            profile.email = response.user.email;
+          }
         }
       } else if (userData?.role === 'company') {
         const { data: companyData, error: companyError } = await supabase

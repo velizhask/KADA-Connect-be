@@ -33,6 +33,7 @@ const getProfile = async (req, res, next) => {
           linkedin,
           portfolio_link,
           phone_number,
+          email_address,
           batch,
           "timestamp"
         `)
