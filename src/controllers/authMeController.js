@@ -1,3 +1,4 @@
+const { supabase } = require('../db');
 const studentService = require('../services/studentService');
 const companyService = require('../services/companyService');
 const fileService = require('../services/fileService');
