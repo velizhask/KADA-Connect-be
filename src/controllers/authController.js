@@ -1,4 +1,6 @@
 const authService = require("../services/authService");
+const studentService = require("../services/studentService");
+const companyService = require("../services/companyService");
 
 class AuthController {
   async register(req, res, next) {
@@ -63,6 +65,77 @@ class AuthController {
       // - refresh_token: automatic renewal
       // - session management: built-in
 
+      // Get the user ID from the auth response
+      const userId = response.user.id;
+
+      // Fetch user's role and profile data
+      const { supabase } = require('../db');
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      if (userError || !userData) {
+        console.error('[ERROR] Failed to fetch user data:', userError);
+      }
+
+      let profile = null;
+
+      // Fetch profile data based on role
+      if (userData?.role === 'student') {
+        const { data: studentData, error: studentError } = await supabase
+          .from('students')
+          .select(`
+            id,
+            full_name,
+            status,
+            employment_status,
+            university_institution,
+            program_major,
+            preferred_industry,
+            tech_stack_skills,
+            self_introduction,
+            cv_upload,
+            profile_photo,
+            linkedin,
+            portfolio_link,
+            phone_number,
+            batch,
+            timestamp
+          `)
+          .eq('id', userId)
+          .single();
+
+        if (!studentError && studentData) {
+          profile = studentService.transformStudentData(studentData);
+        }
+      } else if (userData?.role === 'company') {
+        const { data: companyData, error: companyError } = await supabase
+          .from('companies')
+          .select(`
+            id,
+            company_name,
+            company_summary_description,
+            industry_sector,
+            company_website_link,
+            company_logo,
+            tech_roles_interest,
+            preferred_skillsets,
+            contact_person_name,
+            contact_email,
+            contact_phone_number,
+            contact_info_visible,
+            timestamp
+          `)
+          .eq('id', userId)
+          .single();
+
+        if (!companyError && companyData) {
+          profile = companyService.transformCompanyData(companyData);
+        }
+      }
+
       return res.status(200).json({
         success: true,
         message: "Login successful",
@@ -71,7 +144,8 @@ class AuthController {
           refresh_token: response.session.refresh_token, // Supabase's built-in refresh token
           expires_in: response.session.expires_in || 3600, // 1 hour (Supabase default)
           user: response.user,
-          token_type: 'bearer'
+          token_type: 'bearer',
+          profile: profile
         }
       });
     } catch (error) {
