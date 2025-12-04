@@ -14,20 +14,72 @@ const getProfile = async (req, res, next) => {
     let profile = null;
 
     if (role === 'student') {
-      profile = await studentService.getStudentById(userId, req.user);
+      // Fetch raw student data and transform with full data (including phone)
+      const { data, error } = await supabase
+        .from('students')
+        .select(`
+          id,
+          "full_name",
+          status,
+          employment_status,
+          university_institution,
+          program_major,
+          preferred_industry,
+          tech_stack_skills,
+          self_introduction,
+          cv_upload,
+          profile_photo,
+          linkedin,
+          portfolio_link,
+          phone_number,
+          batch,
+          "timestamp"
+        `)
+        .eq('id', userId)
+        .single();
+
+      if (error || !data) {
+        return res.status(404).json({
+          success: false,
+          message: 'Profile not found'
+        });
+      }
+
+      profile = studentService.transformStudentData(data);
     } else if (role === 'company') {
-      profile = await companyService.getCompanyById(userId);
+      // Fetch raw company data and transform with full data
+      const { data, error } = await supabase
+        .from('companies')
+        .select(`
+          id,
+          company_name,
+          company_summary_description,
+          industry_sector,
+          company_website_link,
+          company_logo,
+          tech_roles_interest,
+          preferred_skillsets,
+          contact_person_name,
+          contact_email,
+          contact_phone_number,
+          contact_info_visible,
+          "timestamp"
+        `)
+        .eq('id', userId)
+        .single();
+
+      if (error || !data) {
+        return res.status(404).json({
+          success: false,
+          message: 'Profile not found'
+        });
+      }
+
+      profile = companyService.transformCompanyData(data);
     } else {
       return res.status(400).json({
         success: false,
         message: 'Invalid role. Must be student or company.'
-      });
-    }
-
-    if (!profile) {
-      return res.status(404).json({
-        success: false,
-        message: 'Profile not found'
       });
     }
 
