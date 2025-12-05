@@ -33,7 +33,7 @@ class CompanyFileController {
       // Get company to verify ownership
       const { data: company, error: companyError } = await supabase
         .from('companies')
-        .select('user_id, company_logo')
+        .select('id, company_logo')
         .eq('id', companyId)
         .single();
 
@@ -49,7 +49,7 @@ class CompanyFileController {
 
       // Check authorization: Company owner can upload to own profile, admin can upload to any
       const isAdmin = req.user.role === 'admin';
-      const isOwner = company.user_id === userId;
+      const isOwner = company.id === userId;
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({
@@ -179,7 +179,7 @@ class CompanyFileController {
       // Get company to verify ownership
       const { data: company, error: companyError } = await supabase
         .from('companies')
-        .select('user_id, company_logo')
+        .select('id, company_logo')
         .eq('id', companyId)
         .single();
 
@@ -195,7 +195,7 @@ class CompanyFileController {
 
       // Check authorization
       const isAdmin = req.user.role === 'admin';
-      const isOwner = company.user_id === userId;
+      const isOwner = company.id === userId;
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({
@@ -297,7 +297,7 @@ class CompanyFileController {
       // Get company to verify ownership
       const { data: company, error: companyError } = await supabase
         .from('companies')
-        .select('user_id')
+        .select('id')
         .eq('id', companyId)
         .single();
 
@@ -313,7 +313,7 @@ class CompanyFileController {
 
       // Check authorization
       const isAdmin = req.user.role === 'admin';
-      const isOwner = company.user_id === userId;
+      const isOwner = company.id === userId;
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({
