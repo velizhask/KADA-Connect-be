@@ -326,7 +326,8 @@ class StudentService {
           profile_photo,
           linkedin,
           email_address,
-          batch
+          batch,
+          is_visible
         `)
         .ilike('status', status)
         .eq('employment_status', 'Open to work') // Only show "Open to work" students
