@@ -28,6 +28,7 @@ class CompanyService {
           contact_email,
           contact_phone_number,
           contact_info_visible,
+          email_address,
           is_visible
         `, { count: 'exact' });
 
@@ -107,6 +108,7 @@ class CompanyService {
           contact_email,
           contact_phone_number,
           contact_info_visible,
+          email_address,
           is_visible
         `)
         .eq('id', id)
@@ -161,6 +163,7 @@ class CompanyService {
           contact_email,
           contact_phone_number,
           contact_info_visible,
+          email_address,
           is_visible
         `);
 
@@ -315,6 +318,7 @@ class CompanyService {
           contact_email,
           contact_phone_number,
           contact_info_visible,
+          email_address,
           is_visible
         `)
         .single();
@@ -398,6 +402,7 @@ class CompanyService {
           contact_email,
           contact_phone_number,
           contact_info_visible,
+          email_address,
           is_visible,
           timestamp
         `)
@@ -513,6 +518,7 @@ class CompanyService {
           contact_email,
           contact_phone_number,
           contact_info_visible,
+          email_address,
           is_visible,
           timestamp
         `)
@@ -776,7 +782,8 @@ class CompanyService {
       contactPerson: company['contact_person_name'],
       contactEmail: isContactInfoVisible ? company['contact_email'] : null,
       // Phone number excluded for public API privacy
-      contactInfoVisible: isContactInfoVisible
+      contactInfoVisible: isContactInfoVisible,
+      completionRate: this.calculateCompletionRate(company)
     };
   }
 
@@ -804,7 +811,8 @@ class CompanyService {
       contactPerson: company['contact_person_name'],
       contactEmail: isContactInfoVisible ? company['contact_email'] : null,
       contactPhone: isContactInfoVisible ? company['contact_phone_number'] : null,
-      contactInfoVisible: isContactInfoVisible
+      contactInfoVisible: isContactInfoVisible,
+      completionRate: this.calculateCompletionRate(company)
     };
   }
 
@@ -820,6 +828,30 @@ class CompanyService {
       .sort(([,a], [,b]) => b - a)
       .slice(0, limit)
       .map(([item, count]) => ({ item, count }));
+  }
+
+  /**
+   * Calculate profile completion rate based on filled fields
+   * @param {Object} company - Raw company data from database
+   * @returns {number} Completion rate as percentage (0-100)
+   */
+  calculateCompletionRate(company) {
+    const fields = [
+      'company_name', 'company_summary_description', 'industry_sector',
+      'company_website_link', 'company_logo', 'tech_roles_interest',
+      'preferred_skillsets', 'contact_person_name', 'contact_email',
+      'contact_phone_number', 'contact_info_visible', 'email_address'
+    ];
+
+    let completed = 0;
+    fields.forEach(field => {
+      const value = company[field];
+      if (value !== null && value !== undefined && value.toString().trim() !== '') {
+        completed++;
+      }
+    });
+
+    return Math.round((completed / fields.length) * 100);
   }
 }
 

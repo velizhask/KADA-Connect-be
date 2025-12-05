@@ -1030,7 +1030,8 @@ class StudentService {
       portfolioLink: student['portfolio_link'],
       email: student['email_address'],
       batch: student['batch'],
-      timestamp: student['timestamp']
+      timestamp: student['timestamp'],
+      completionRate: this.calculateCompletionRate(student)
     };
   }
 
@@ -1066,7 +1067,8 @@ class StudentService {
       phone: student['phone_number'],
       email: student['email_address'],
       batch: student['batch'],
-      timestamp: student['timestamp']
+      timestamp: student['timestamp'],
+      completionRate: this.calculateCompletionRate(student)
     };
   }
 
@@ -1082,6 +1084,31 @@ class StudentService {
       .sort(([,a], [,b]) => b - a)
       .slice(0, limit)
       .map(([item, count]) => ({ item, count }));
+  }
+
+  /**
+   * Calculate profile completion rate based on filled fields
+   * @param {Object} student - Raw student data from database
+   * @returns {number} Completion rate as percentage (0-100)
+   */
+  calculateCompletionRate(student) {
+    const fields = [
+      'full_name', 'status', 'employment_status',
+      'university_institution', 'program_major',
+      'preferred_industry', 'tech_stack_skills', 'self_introduction',
+      'batch', 'cv_upload', 'profile_photo',
+      'linkedin', 'portfolio_link', 'phone_number', 'email_address'
+    ];
+
+    let completed = 0;
+    fields.forEach(field => {
+      const value = student[field];
+      if (value !== null && value !== undefined && value.toString().trim() !== '') {
+        completed++;
+      }
+    });
+
+    return Math.round((completed / fields.length) * 100);
   }
 }
 
