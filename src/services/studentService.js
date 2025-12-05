@@ -326,7 +326,8 @@ class StudentService {
           profile_photo,
           linkedin,
           email_address,
-          batch
+          batch,
+          is_visible
         `)
         .ilike('status', status)
         .eq('employment_status', 'Open to work') // Only show "Open to work" students
@@ -710,8 +711,16 @@ class StudentService {
 
   async patchStudent(id, patchData, req = null) {
     try {
+      console.log('[DEBUG] === PATCH STUDENT START ===');
+      console.log('[DEBUG] Student ID:', id);
+      console.log('[DEBUG] Patch data:', JSON.stringify(patchData, null, 2));
+      console.log('[DEBUG] Current user:', req?.user?.id);
+
       // Transform camelCase input to snake_case for database (partial update)
       const dbData = this.transformStudentDataForDBPartial(patchData);
+
+      console.log('[DEBUG] Prepared DB data:', JSON.stringify(dbData, null, 2));
+      console.log('[DEBUG] Executing Supabase update...');
 
       // Ensure we have some data to update
       if (Object.keys(dbData).length === 0) {
@@ -756,8 +765,19 @@ class StudentService {
           return null; // Student not found
         }
         console.error('[ERROR] Failed to patch student:', error.message);
+        console.error('[ERROR] Error code:', error.code);
+        console.error('[ERROR] Error details:', error);
         throw new Error(`Failed to patch student: ${error.message}`);
       }
+
+      // VERIFICATION: Check if data was actually updated
+      if (!data) {
+        console.error('[ERROR] No data returned from patch operation');
+        throw new Error('Failed to patch student: No data returned from database');
+      }
+
+      console.log('[DEBUG] Patch operation completed successfully');
+      console.log('[DEBUG] Updated student ID:', data.id);
 
       // Log successful UPDATE operation
       if (req && oldData) {
@@ -784,6 +804,11 @@ class StudentService {
       }
 
       const transformedData = this.transformStudentData(data);
+
+      console.log('[DEBUG] === PATCH STUDENT SUCCESS ===');
+      console.log('[DEBUG] Updated student ID:', data.id);
+      console.log('[DEBUG] Transformation complete');
+
       return transformedData;
     } catch (error) {
       // Log failed UPDATE operation
@@ -889,7 +914,18 @@ class StudentService {
       'profile_photo': studentData.profilePhoto || null,
       'linkedin': studentData.linkedin || null,
       'portfolio_link': studentData.portfolioLink || null,
-      'phone_number': (studentData.phoneNumber || studentData.phone) ? parseInt(studentData.phoneNumber || studentData.phone) : null,
+      'phone_number': (() => {
+        const phoneValue = studentData.phoneNumber || studentData.phone;
+        if (!phoneValue) return null;
+        // Validate phone number is numeric
+        const phoneRegex = /^\d+$/;
+        if (phoneRegex.test(String(phoneValue))) {
+          return parseInt(phoneValue);
+        } else {
+          console.warn('[WARN] Invalid phone number format:', phoneValue);
+          return null;
+        }
+      })(),
       'email_address': studentData.email || null,
       'is_visible': studentData.isVisible !== undefined ? studentData.isVisible : false,
       'batch': studentData.batch || null
@@ -944,7 +980,20 @@ class StudentService {
     }
     if (patchData.phoneNumber !== undefined || patchData.phone !== undefined) {
       const phoneValue = patchData.phoneNumber || patchData.phone;
-      dbData['phone_number'] = phoneValue ? parseInt(phoneValue) : null;
+      if (phoneValue !== undefined) {
+        if (phoneValue === null || phoneValue === '') {
+          dbData['phone_number'] = null;
+        } else {
+          // Validate phone number is numeric
+          const phoneRegex = /^\d+$/;
+          if (phoneRegex.test(String(phoneValue))) {
+            dbData['phone_number'] = parseInt(phoneValue);
+          } else {
+            console.warn('[WARN] Invalid phone number format:', phoneValue);
+            // Skip updating phone number if invalid
+          }
+        }
+      }
     }
     if (patchData.email !== undefined) {
       dbData['email_address'] = patchData.email || null;

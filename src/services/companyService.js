@@ -465,12 +465,16 @@ class CompanyService {
 
   async patchCompany(id, patchData, req = null) {
     try {
+      console.log('[DEBUG] === PATCH COMPANY START ===');
+      console.log('[DEBUG] Company ID:', id);
+      console.log('[DEBUG] Patch data:', JSON.stringify(patchData, null, 2));
+      console.log('[DEBUG] Current user:', req?.user?.id);
+
       // Transform camelCase input to snake_case for database (partial update)
       const dbData = this.transformCompanyDataForDBPartial(patchData);
 
-      // Debug: Log the data being sent to Supabase
-      console.log('[DEBUG] patchCompany input:', { id, patchData });
-      console.log('[DEBUG] transformed dbData:', dbData);
+      console.log('[DEBUG] Prepared DB data:', JSON.stringify(dbData, null, 2));
+      console.log('[DEBUG] Executing Supabase update...');
 
       // Ensure we have some data to update
       if (Object.keys(dbData).length === 0) {
@@ -519,10 +523,21 @@ class CompanyService {
           return null; // Company not found
         }
         console.error('[ERROR] Failed to patch company:', error.message);
-        console.error('[ERROR] Full error details:', error);
-        console.error('[ERROR] Data being sent:', dbData);
+        console.error('[ERROR] Error code:', error.code);
+        console.error('[ERROR] Error details:', error);
+        console.error('[ERROR] Data being sent:', JSON.stringify(dbData, null, 2));
         throw new Error(`Failed to patch company: ${error.message}`);
       }
+
+      // VERIFICATION: Check if data was actually updated
+      if (!data) {
+        console.error('[ERROR] No data returned from patch operation');
+        throw new Error('Failed to patch company: No data returned from database');
+      }
+
+      console.log('[DEBUG] Patch operation completed successfully');
+      console.log('[DEBUG] Updated company ID:', data.id);
+      console.log('[DEBUG] isVisible flag:', data.is_visible);
 
       // Log successful UPDATE operation
       if (req && oldData) {
@@ -545,6 +560,11 @@ class CompanyService {
       responseCache.clearByTable('companies', id);
 
       const transformedData = this.transformCompanyData(data);
+
+      console.log('[DEBUG] === PATCH COMPANY SUCCESS ===');
+      console.log('[DEBUG] Updated company ID:', data.id);
+      console.log('[DEBUG] Transformation complete');
+
       return transformedData;
     } catch (error) {
       // Log failed UPDATE operation
@@ -677,19 +697,21 @@ class CompanyService {
     if (patchData.industry !== undefined) {
       dbData['industry_sector'] = patchData.industry;
     }
+    // Handle website field - accept both variants, normalize to DB
     if (patchData.companyWebsite !== undefined) {
       dbData['company_website_link'] = patchData.companyWebsite || null;
-    }
-    // Accept simplified field name too
-    if (patchData.website !== undefined) {
+      console.log('[DEBUG] Using companyWebsite:', patchData.companyWebsite);
+    } else if (patchData.website !== undefined) {
       dbData['company_website_link'] = patchData.website || null;
+      console.log('[DEBUG] Using website:', patchData.website);
     }
+    // Handle logo field - accept both variants, normalize to DB
     if (patchData.companyLogo !== undefined) {
       dbData['company_logo'] = patchData.companyLogo || null;
-    }
-    // Accept simplified field name too
-    if (patchData.logo !== undefined) {
+      console.log('[DEBUG] Using companyLogo:', patchData.companyLogo);
+    } else if (patchData.logo !== undefined) {
       dbData['company_logo'] = patchData.logo || null;
+      console.log('[DEBUG] Using logo:', patchData.logo);
     }
     if (patchData.techRoles !== undefined) {
       // Ensure tech roles is always a string to avoid JSON conflicts

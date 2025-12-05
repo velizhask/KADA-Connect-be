@@ -294,7 +294,7 @@ class FileService {
       // Verify student belongs to user or user is admin
       const { data: student, error: studentError } = await supabase
         .from('students')
-        .select('user_id')
+        .select('id')
         .eq('id', studentId)
         .single();
 
@@ -309,7 +309,7 @@ class FileService {
         .single();
 
       const isAdmin = userData?.role === 'admin';
-      const isOwner = student.user_id === userId;
+      const isOwner = student.id === userId;
 
       if (!isOwner && !isAdmin) {
         throw new Error('Unauthorized: You can only access your own student profile files');
@@ -366,7 +366,7 @@ class FileService {
       // Verify company belongs to user or user is admin
       const { data: company, error: companyError } = await supabase
         .from('companies')
-        .select('user_id')
+        .select('id')
         .eq('id', companyId)
         .single();
 
@@ -381,7 +381,7 @@ class FileService {
         .single();
 
       const isAdmin = userData?.role === 'admin';
-      const isOwner = company.user_id === userId;
+      const isOwner = company.id === userId;
 
       if (!isOwner && !isAdmin) {
         throw new Error('Unauthorized: You can only access your own company profile files');

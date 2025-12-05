@@ -276,7 +276,7 @@ class StudentController {
       }
 
       // Allow if admin or if user owns this student profile
-      const isOwner = student.user_id === currentUser.id;
+      const isOwner = student.id === currentUser.id;
 
       // If not owner, check if user is admin
       if (!isOwner) {
@@ -343,7 +343,7 @@ class StudentController {
       }
 
       // Allow if admin or if user owns this student profile
-      const isOwner = student.user_id === currentUser.id;
+      const isOwner = student.id === currentUser.id;
 
       // If not owner, check if user is admin
       if (!isOwner) {
@@ -401,7 +401,7 @@ class StudentController {
       }
 
       // Allow if admin or if user owns this student profile
-      const isOwner = student.user_id === currentUser.id;
+      const isOwner = student.id === currentUser.id;
       const isAdmin = userRole === 'admin';
 
       if (!isOwner && !isAdmin) {

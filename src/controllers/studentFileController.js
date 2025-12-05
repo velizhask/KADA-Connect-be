@@ -33,7 +33,7 @@ class StudentFileController {
       // Get student to verify ownership
       const { data: student, error: studentError } = await supabase
         .from('students')
-        .select('user_id, cv_upload')
+        .select('id, cv_upload')
         .eq('id', studentId)
         .single();
 
@@ -49,7 +49,7 @@ class StudentFileController {
 
       // Check authorization: Student can only upload to own profile, admin can upload to any
       const isAdmin = req.user.role === 'admin';
-      const isOwner = student.user_id === userId;
+      const isOwner = student.id === userId;
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({
@@ -179,7 +179,7 @@ class StudentFileController {
       // Get student to verify ownership
       const { data: student, error: studentError } = await supabase
         .from('students')
-        .select('user_id, profile_photo')
+        .select('id, profile_photo')
         .eq('id', studentId)
         .single();
 
@@ -195,7 +195,7 @@ class StudentFileController {
 
       // Check authorization
       const isAdmin = req.user.role === 'admin';
-      const isOwner = student.user_id === userId;
+      const isOwner = student.id === userId;
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({
@@ -324,7 +324,7 @@ class StudentFileController {
       // Get student to verify ownership
       const { data: student, error: studentError } = await supabase
         .from('students')
-        .select('user_id, cv_upload')
+        .select('id, cv_upload')
         .eq('id', studentId)
         .single();
 
@@ -340,7 +340,7 @@ class StudentFileController {
 
       // Check authorization
       const isAdmin = req.user.role === 'admin';
-      const isOwner = student.user_id === userId;
+      const isOwner = student.id === userId;
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({
@@ -442,7 +442,7 @@ class StudentFileController {
       // Get student to verify ownership
       const { data: student, error: studentError } = await supabase
         .from('students')
-        .select('user_id, profile_photo')
+        .select('id, profile_photo')
         .eq('id', studentId)
         .single();
 
@@ -458,7 +458,7 @@ class StudentFileController {
 
       // Check authorization
       const isAdmin = req.user.role === 'admin';
-      const isOwner = student.user_id === userId;
+      const isOwner = student.id === userId;
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({
@@ -560,7 +560,7 @@ class StudentFileController {
       // Get student to verify ownership
       const { data: student, error: studentError } = await supabase
         .from('students')
-        .select('user_id')
+        .select('id')
         .eq('id', studentId)
         .single();
 
@@ -576,7 +576,7 @@ class StudentFileController {
 
       // Check authorization
       const isAdmin = req.user.role === 'admin';
-      const isOwner = student.user_id === userId;
+      const isOwner = student.id === userId;
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({
@@ -641,7 +641,7 @@ class StudentFileController {
       // Get student to verify ownership
       const { data: student, error: studentError } = await supabase
         .from('students')
-        .select('user_id')
+        .select('id')
         .eq('id', studentId)
         .single();
 
@@ -657,7 +657,7 @@ class StudentFileController {
 
       // Check authorization
       const isAdmin = req.user.role === 'admin';
-      const isOwner = student.user_id === userId;
+      const isOwner = student.id === userId;
 
       if (!isOwner && !isAdmin) {
         return res.status(403).json({
