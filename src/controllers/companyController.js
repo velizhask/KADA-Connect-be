@@ -188,7 +188,7 @@ class CompanyController {
       }
 
       // Allow if admin or if user owns this company
-      const isOwner = company.user_id === currentUser.id;
+      const isOwner = company.id === currentUser.id;
 
       // If not owner, check if user is admin
       if (!isOwner) {
@@ -252,7 +252,7 @@ class CompanyController {
       }
 
       // Allow if admin or if user owns this company
-      const isOwner = company.user_id === currentUser.id;
+      const isOwner = company.id === currentUser.id;
 
       // If not owner, check if user is admin
       if (!isOwner) {
@@ -308,7 +308,7 @@ class CompanyController {
       }
 
       // Allow if admin or if user owns this company
-      const isOwner = company.user_id === currentUser.id;
+      const isOwner = company.id === currentUser.id;
       const isAdmin = userRole === 'admin';
 
       if (!isOwner && !isAdmin) {
