@@ -108,7 +108,9 @@ class StudentService {
       });
 
       // Transform data to camelCase for API consistency
-      const transformedData = filteredData.map(student => this.transformStudentDataPublic(student));
+      const transformedData = filteredData.map(student =>
+        this.transformStudentDataPublic(student, currentUser?.role, currentUser?.id)
+      );
 
       const response = {
         students: transformedData,
@@ -199,7 +201,7 @@ class StudentService {
       }
 
       // Transform data for public API
-      const transformedData = this.transformStudentDataPublic(data);
+      const transformedData = this.transformStudentDataPublic(data, currentUser?.role, currentUser?.id);
 
       // Cache the individual student response
       responseCache.setAPIResponse(cacheKey, cacheParams, transformedData);
@@ -302,7 +304,9 @@ class StudentService {
         throw new Error('Failed to search students');
       }
 
-      const results = data.map(student => this.transformStudentDataPublic(student));
+      const results = data.map(student =>
+        this.transformStudentDataPublic(student, currentUser?.role, currentUser?.id)
+      );
       return results;
     } catch (error) {
       console.error('[ERROR] StudentService.searchStudents:', error.message);
@@ -310,7 +314,7 @@ class StudentService {
     }
   }
 
-  async getStudentsByStatus(status) {
+  async getStudentsByStatus(status, currentUser = null) {
     try {
       const { data, error } = await supabase
         .from('students')
@@ -341,7 +345,9 @@ class StudentService {
       // Filter out invisible students
       const visibleData = data.filter(student => student['is_visible'] === true);
 
-      const transformedResults = visibleData.map(student => this.transformStudentDataPublic(student));
+      const transformedResults = visibleData.map(student =>
+        this.transformStudentDataPublic(student, currentUser?.role, currentUser?.id)
+      );
       return transformedResults;
     } catch (error) {
       console.error('[ERROR] StudentService.getStudentsByStatus:', error.message);
@@ -1011,25 +1017,42 @@ class StudentService {
   /**
    * Transform student data for public API responses (excludes phone number)
    * @param {Object} student - Raw student data from database
+   * @param {string} viewerRole - Role of the viewer (admin, student, company)
+   * @param {string} viewerId - ID of the viewer
    * @returns {Object} Transformed student data without phone number
    */
-  transformStudentDataPublic(student) {
-    return {
+  transformStudentDataPublic(student, viewerRole = null, viewerId = null) {
+    const isOwnData = viewerId && student.id === viewerId;
+    const isStudentViewingOtherStudent = viewerRole === 'student' && !isOwnData;
+
+    // Base fields that everyone can see
+    const baseData = {
       id: student.id,
       fullName: student['full_name'],
-      status: student['status'],
       employmentStatus: student['employment_status'],
+      status: student['status'],
+      batch: student['batch'],
+      profilePhoto: student['profile_photo'],
+      linkedin: student['linkedin'],
+      portfolioLink: student['portfolio_link'],
+      email: student['email_address']
+    };
+
+    // If viewer is a student looking at another student, only show base data
+    if (isStudentViewingOtherStudent) {
+      return baseData;
+    }
+
+    // For all other cases (admin, company, or viewing own data), show all fields
+    return {
+      ...baseData,
       university: student['university_institution'],
       major: student['program_major'],
       preferredIndustry: student['preferred_industry'],
       techStack: student['tech_stack_skills'],
       selfIntroduction: student['self_introduction'],
       cvUpload: student['cv_upload'],
-      profilePhoto: student['profile_photo'],
-      linkedin: student['linkedin'],
-      portfolioLink: student['portfolio_link'],
-      email: student['email_address'],
-      batch: student['batch'],
+      status: student['status'],
       timestamp: student['timestamp'],
       completionRate: this.calculateCompletionRate(student)
     };
@@ -1038,10 +1061,12 @@ class StudentService {
   /**
    * Transform student list data for public API responses (excludes phone numbers)
    * @param {Array} students - Array of student data from database
+   * @param {string} viewerRole - Role of the viewer (admin, student, company)
+   * @param {string} viewerId - ID of the viewer
    * @returns {Array} Transformed student data without phone numbers
    */
-  transformStudentListPublic(students) {
-    return students.map(student => this.transformStudentDataPublic(student));
+  transformStudentListPublic(students, viewerRole = null, viewerId = null) {
+    return students.map(student => this.transformStudentDataPublic(student, viewerRole, viewerId));
   }
 
   /**

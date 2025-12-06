@@ -138,7 +138,7 @@ class StudentController {
         });
       }
 
-      const students = await studentService.getStudentsByStatus(status);
+      const students = await studentService.getStudentsByStatus(status, req.user);
 
       res.status(200).json({
         success: true,
