@@ -7,9 +7,11 @@
 4. [Current User Profile](#current-user-profile)
 5. [Companies API](#companies-api)
 6. [Students API](#students-api)
-7. [File Upload](#file-upload)
-8. [Error Handling](#error-handling)
-9. [Field Names Guide](#field-names-guide)
+7. [Lookup API](#lookup-api)
+8. [Admin API](#admin-api)
+9. [File Upload](#file-upload)
+10. [Error Handling](#error-handling)
+11. [Field Names Guide](#field-names-guide)
 
 ---
 
@@ -33,15 +35,17 @@ const API_BASE_URL = 'http://localhost:3001/api';
 {
   "success": false,
   "message": "Error description",
-  "data": null
+  "data": null,
+  "error": "Detailed error info (if available)"
 }
 ```
 
 ### Critical Notes for Frontend
-1. All endpoints require authentication (except login/register)
+1. All endpoints require authentication (except login/register/forgot-password)
 2. All IDs are UUID v4 format (not numbers): `550e8400-e29b-41d4-a716-446655440000`
 3. Use PATCH for updates (PUT is disabled)
 4. File uploads use FormData (not JSON)
+5. Rate limiting applies to sensitive endpoints
 
 ---
 
@@ -59,6 +63,7 @@ The API implements role-based access control with three user roles: **admin**, *
 - Can view ALL companies (including invisible ones)
 - Can create, update, delete any company
 - Can view all company data including hidden fields
+- Access to admin logs and statistics
 
 **Students:**
 - Can view ALL students (including invisible ones)
@@ -103,9 +108,6 @@ The API implements role-based access control with three user roles: **admin**, *
 - Can view ALL visible companies
 
 **Use Case:** Companies looking for job candidates
-
-
----
 
 ### Employment Status Filtering
 
@@ -207,6 +209,66 @@ await fetch(`${API_BASE_URL}/auth/logout`, {
 // Clear local storage
 localStorage.removeItem('access_token');
 localStorage.removeItem('refresh_token');
+```
+
+### POST /api/auth/forgot-password
+**Request password reset email**
+
+**Request:**
+```javascript
+await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'user@example.com'
+  })
+});
+```
+
+**Response:**
+```javascript
+{
+  "success": true,
+  "message": "Password reset email sent successfully"
+}
+```
+
+**Rate Limiting:** 3 requests per hour per IP
+
+### POST /api/auth/reset-password
+**Reset password using access token from email**
+
+**Request:**
+```javascript
+// Extract access_token from email link URL hash
+// Email link format: http://localhost:3000/#access_token=...&refresh_token=...&type=recovery
+await fetch(`${API_BASE_URL}/auth/reset-password`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    password: 'newpassword123'
+  })
+});
+```
+
+**Response:**
+```javascript
+{
+  "success": true,
+  "message": "Password reset successfully"
+}
+```
+
+### GET /api/auth/me
+**Get current user's profile (legacy endpoint)**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const response = await fetch(`${API_BASE_URL}/auth/me`, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
 ```
 
 ---
@@ -311,6 +373,54 @@ await fetch(`${API_BASE_URL}/auth/me/profile`, {
 });
 ```
 
+### POST /api/auth/me/cv
+**Upload CV (students only)**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const formData = new FormData();
+formData.append('cv', fileInput.files[0]);
+
+await fetch(`${API_BASE_URL}/auth/me/cv`, {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${token}` },
+  body: formData
+});
+```
+
+### POST /api/auth/me/photo
+**Upload profile photo (students only)**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const formData = new FormData();
+formData.append('photo', fileInput.files[0]);
+
+await fetch(`${API_BASE_URL}/auth/me/photo`, {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${token}` },
+  body: formData
+});
+```
+
+### POST /api/auth/me/logo
+**Upload company logo (companies only)**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const formData = new FormData();
+formData.append('logo', fileInput.files[0]);
+
+await fetch(`${API_BASE_URL}/auth/me/logo`, {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${token}` },
+  body: formData
+});
+```
+
 ---
 
 ## Companies API
@@ -347,7 +457,8 @@ const data = await response.json();
       "contactPerson": "Jane Smith",
       "contactEmail": "contact@techcorp.com",
       "contactPhone": "+1234567890",
-      "contactInfoVisible": false
+      "contactInfoVisible": false,
+      "isVisible": true
     }
   ],
   "pagination": {
@@ -475,6 +586,36 @@ const data = await response.json();
 // Returns: ["Software Engineer", "Data Scientist", ...]
 ```
 
+### GET /api/companies/stats
+**Get company statistics**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const response = await fetch(`${API_BASE_URL}/companies/stats`, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+const data = await response.json();
+```
+
+### POST /api/companies/validate-logo
+**Validate company logo URL**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+await fetch(`${API_BASE_URL}/companies/validate-logo`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    "logoUrl": "https://example.com/logo.png"
+  })
+});
+```
+
 ---
 
 ## Students API
@@ -516,6 +657,7 @@ const data = await response.json();
       "profilePhoto": null,
       "linkedin": "https://linkedin.com/in/john",
       "portfolioLink": "https://github.com/john",
+      "phone": "1234567890",
       "batch": "Batch 1",
       "isVisible": true,
       "timestamp": "2025-11-26T10:00:00.000Z"
@@ -669,6 +811,293 @@ const data = await response.json();
 // Returns: ["JavaScript", "Python", "React", ...]
 ```
 
+### GET /api/students/stats
+**Get student statistics**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const response = await fetch(`${API_BASE_URL}/students/stats`, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+const data = await response.json();
+```
+
+---
+
+## Lookup API
+
+### GET /api/industries
+**Get all unique industries**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/industries`);
+const data = await response.json();
+```
+
+### GET /api/tech-roles
+**Get all unique tech roles**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/tech-roles`);
+const data = await response.json();
+```
+
+### GET /api/tech-role-categories
+**Get tech role categories**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/tech-role-categories`);
+const data = await response.json();
+```
+
+### GET /api/universities
+**Get all unique universities**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/universities`);
+const data = await response.json();
+```
+
+### GET /api/majors
+**Get all unique majors**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/majors`);
+const data = await response.json();
+```
+
+### GET /api/preferred-industries
+**Get all unique preferred industries**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/preferred-industries`);
+const data = await response.json();
+```
+
+### GET /api/tech-roles/category/:category
+**Get tech roles by specific category**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/tech-roles/category/Backend`);
+const data = await response.json();
+```
+
+### GET /api/search/industries
+**Search industries with query parameter**
+
+**Request:**
+```javascript
+const params = new URLSearchParams({ q: 'tech' });
+const response = await fetch(`${API_BASE_URL}/search/industries?${params}`);
+const data = await response.json();
+```
+
+### GET /api/search/tech-roles
+**Search tech roles with query parameter**
+
+**Request:**
+```javascript
+const params = new URLSearchParams({ q: 'developer' });
+const response = await fetch(`${API_BASE_URL}/search/tech-roles?${params}`);
+const data = await response.json();
+```
+
+### GET /api/search/universities
+**Search universities with query parameter**
+
+**Request:**
+```javascript
+const params = new URLSearchParams({ q: 'stanford' });
+const response = await fetch(`${API_BASE_URL}/search/universities?${params}`);
+const data = await response.json();
+```
+
+### GET /api/search/majors
+**Search majors with query parameter**
+
+**Request:**
+```javascript
+const params = new URLSearchParams({ q: 'computer' });
+const response = await fetch(`${API_BASE_URL}/search/majors?${params}`);
+const data = await response.json();
+```
+
+### GET /api/search/preferred-industries
+**Search preferred industries with query parameter**
+
+**Request:**
+```javascript
+const params = new URLSearchParams({ q: 'tech' });
+const response = await fetch(`${API_BASE_URL}/search/preferred-industries?${params}`);
+const data = await response.json();
+```
+
+### GET /api/suggestions/tech-skills
+**Get tech skill suggestions**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/suggestions/tech-skills`);
+const data = await response.json();
+```
+
+### POST /api/validate/tech-skills
+**Validate tech skills array**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+await fetch(`${API_BASE_URL}/validate/tech-skills`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    skills: ["JavaScript", "React", "Node.js"]
+  })
+});
+```
+
+### GET /api/lookup/all
+**Get all lookup data in one call**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const response = await fetch(`${API_BASE_URL}/lookup/all`, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+const data = await response.json();
+```
+
+### GET /api/popular/industries
+**Get most popular industries by count**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/popular/industries`);
+const data = await response.json();
+```
+
+### GET /api/popular/tech-roles
+**Get most popular tech roles by count**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/popular/tech-roles`);
+const data = await response.json();
+```
+
+### GET /api/popular/tech-skills
+**Get most popular tech skills by count**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/popular/tech-skills`);
+const data = await response.json();
+```
+
+### GET /api/popular/universities
+**Get most popular universities by count**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/popular/universities`);
+const data = await response.json();
+```
+
+### GET /api/popular/majors
+**Get most popular majors by count**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/popular/majors`);
+const data = await response.json();
+```
+
+### GET /api/popular/preferred-industries
+**Get most popular preferred industries by count**
+
+**Request:**
+```javascript
+const response = await fetch(`${API_BASE_URL}/popular/preferred-industries`);
+const data = await response.json();
+```
+
+### POST /api/cache/clear
+**Clear lookup cache (admin only)**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+await fetch(`${API_BASE_URL}/cache/clear`, {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+```
+
+### GET /api/cache/status
+**Get cache status**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const response = await fetch(`${API_BASE_URL}/cache/status`, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+const data = await response.json();
+```
+
+---
+
+## Admin API
+
+### GET /api/admin/logs
+**Get CRUD logs (admin only)**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const response = await fetch(`${API_BASE_URL}/admin/logs`, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+const data = await response.json();
+```
+
+### GET /api/admin/logs/request/:requestId
+**Get logs by request ID (admin only)**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const requestId = "e4db9557-bbe8-4aac-842a-c62b38cb3656";
+const response = await fetch(`${API_BASE_URL}/admin/logs/request/${requestId}`, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+const data = await response.json();
+```
+
+### GET /api/admin/logs/stats
+**Get log statistics (admin only)**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+const response = await fetch(`${API_BASE_URL}/admin/logs/stats`, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+const data = await response.json();
+```
+
 ---
 
 ## File Upload
@@ -782,47 +1211,20 @@ await fetch(`${API_BASE_URL}/companies/${companyId}/logo`, {
 });
 ```
 
-### File Upload via Profile Endpoint
+### File Retrieval
 
-You can also upload files through the profile endpoint:
+**GET /api/students/:id/cv**
+**GET /api/students/:id/photo**
+**GET /api/companies/:id/logo**
 
-**POST /api/auth/me/cv** (students only)
 ```javascript
 const token = localStorage.getItem('access_token');
-const formData = new FormData();
-formData.append('cv', fileInput.files[0]);
+const id = "uuid-here";
 
-await fetch(`${API_BASE_URL}/auth/me/cv`, {
-  method: 'POST',
-  headers: { 'Authorization': `Bearer ${token}` },
-  body: formData
+const response = await fetch(`${API_BASE_URL}/students/${id}/cv`, {
+  headers: { 'Authorization': `Bearer ${token}` }
 });
-```
-
-**POST /api/auth/me/photo** (students only)
-```javascript
-const token = localStorage.getItem('access_token');
-const formData = new FormData();
-formData.append('photo', fileInput.files[0]);
-
-await fetch(`${API_BASE_URL}/auth/me/photo`, {
-  method: 'POST',
-  headers: { 'Authorization': `Bearer ${token}` },
-  body: formData
-});
-```
-
-**POST /api/auth/me/logo** (companies only)
-```javascript
-const token = localStorage.getItem('access_token');
-const formData = new FormData();
-formData.append('logo', fileInput.files[0]);
-
-await fetch(`${API_BASE_URL}/auth/me/logo`, {
-  method: 'POST',
-  headers: { 'Authorization': `Bearer ${token}` },
-  body: formData
-});
+const data = await response.json();
 ```
 
 ---
@@ -834,7 +1236,8 @@ await fetch(`${API_BASE_URL}/auth/me/logo`, {
 {
   "success": false,
   "message": "Detailed error description",
-  "data": null
+  "data": null,
+  "error": "Additional error details"
 }
 ```
 
@@ -848,6 +1251,7 @@ await fetch(`${API_BASE_URL}/auth/me/logo`, {
 | 401 | Unauthorized | Redirect to login |
 | 403 | Forbidden | Show "permission denied" |
 | 404 | Not Found | Show "not found" |
+| 429 | Too Many Requests | Show "rate limit exceeded" |
 | 500 | Server Error | Show "something went wrong" |
 
 ### Validation Error Example
@@ -879,6 +1283,23 @@ if (response.status === 401) {
   window.location.href = '/login';
 }
 ```
+
+### Rate Limiting Error
+```javascript
+// When rate limit is exceeded
+{
+  "success": false,
+  "message": "Too many password reset requests from this IP, please try again in 1 hour.",
+  "error": "Rate limit exceeded",
+  "data": null
+}
+```
+
+**Rate Limit Headers:**
+- `X-RateLimit-Limit`: Maximum requests allowed
+- `X-RateLimit-Remaining`: Requests remaining in current window
+- `X-RateLimit-Reset`: Time when the limit resets (Unix timestamp)
+- `Retry-After`: Seconds to wait before making another request
 
 ### UUID Validation Error
 ```javascript
@@ -1055,7 +1476,41 @@ async function uploadFile(endpoint, file, fieldName = 'file') {
 const result = await uploadFile('/auth/me/cv', fileInput.files[0], 'cv');
 ```
 
-### 3. UUID Generation (for new resources)
+### 3. Password Reset Flow
+```javascript
+// Step 1: Request reset email
+async function requestPasswordReset(email) {
+  const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+  return await response.json();
+}
+
+// Step 2: Handle email link redirect
+// Email link format: http://localhost:3000/#access_token=...&refresh_token=...&type=recovery
+function getAccessTokenFromUrl() {
+  const hash = window.location.hash.substring(1); // Remove #
+  const params = new URLSearchParams(hash);
+  return params.get('access_token');
+}
+
+// Step 3: Reset password
+async function resetPassword(accessToken, newPassword) {
+  const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      access_token: accessToken,
+      password: newPassword
+    })
+  });
+  return await response.json();
+}
+```
+
+### 4. UUID Generation (for new resources)
 ```javascript
 // Generate UUID v4 for new resources
 function generateUUID() {
@@ -1069,7 +1524,7 @@ function generateUUID() {
 // But you don't need to - API returns UUIDs in responses
 ```
 
-### 4. Form Handling for PATCH
+### 5. Form Handling for PATCH
 ```javascript
 // Collect only changed fields for PATCH request
 function prepareUpdateData(formData, originalData) {
@@ -1094,7 +1549,7 @@ if (Object.keys(changes).length > 0) {
 }
 ```
 
-### 5. Error Message Display
+### 6. Error Message Display
 ```javascript
 function showError(error) {
   const message = typeof error === 'string'
@@ -1122,6 +1577,9 @@ try {
 - `POST /api/auth/login` - Login
 - `POST /api/auth/register` - Register
 - `POST /api/auth/logout` - Logout
+- `POST /api/auth/forgot-password` - Request password reset
+- `POST /api/auth/reset-password` - Reset password
+- `GET /api/auth/me` - Get current profile (legacy)
 
 **Current User:**
 - `GET /api/auth/me/profile` - Get profile
@@ -1139,6 +1597,8 @@ try {
 - `GET /api/companies/search` - Search
 - `GET /api/companies/industries` - Get industries
 - `GET /api/companies/tech-roles` - Get tech roles
+- `GET /api/companies/stats` - Get statistics
+- `POST /api/companies/validate-logo` - Validate logo URL
 - `POST /api/companies/:id/logo` - Upload logo
 - `GET /api/companies/:id/logo` - Get logo
 - `DELETE /api/companies/:id/logo` - Delete logo
@@ -1155,12 +1615,43 @@ try {
 - `GET /api/students/majors` - Get majors
 - `GET /api/students/industries` - Get industries
 - `GET /api/students/skills` - Get skills
+- `GET /api/students/stats` - Get statistics
 - `POST /api/students/:id/cv` - Upload CV
 - `GET /api/students/:id/cv` - Get CV
 - `DELETE /api/students/:id/cv` - Delete CV
 - `POST /api/students/:id/photo` - Upload photo
 - `GET /api/students/:id/photo` - Get photo
 - `DELETE /api/students/:id/photo` - Delete photo
+
+**Lookup:**
+- `GET /api/industries` - Get industries
+- `GET /api/tech-roles` - Get tech roles
+- `GET /api/tech-role-categories` - Get tech role categories
+- `GET /api/universities` - Get universities
+- `GET /api/majors` - Get majors
+- `GET /api/preferred-industries` - Get preferred industries
+- `GET /api/tech-roles/category/:category` - Get tech roles by category
+- `GET /api/search/industries` - Search industries
+- `GET /api/search/tech-roles` - Search tech roles
+- `GET /api/search/universities` - Search universities
+- `GET /api/search/majors` - Search majors
+- `GET /api/search/preferred-industries` - Search preferred industries
+- `GET /api/suggestions/tech-skills` - Get tech skill suggestions
+- `POST /api/validate/tech-skills` - Validate tech skills
+- `GET /api/lookup/all` - Get all lookup data
+- `GET /api/popular/industries` - Get popular industries
+- `GET /api/popular/tech-roles` - Get popular tech roles
+- `GET /api/popular/tech-skills` - Get popular tech skills
+- `GET /api/popular/universities` - Get popular universities
+- `GET /api/popular/majors` - Get popular majors
+- `GET /api/popular/preferred-industries` - Get popular preferred industries
+- `POST /api/cache/clear` - Clear cache (admin)
+- `GET /api/cache/status` - Get cache status
+
+**Admin:**
+- `GET /api/admin/logs` - Get CRUD logs
+- `GET /api/admin/logs/request/:requestId` - Get logs by request ID
+- `GET /api/admin/logs/stats` - Get log statistics
 
 ---
 
@@ -1194,6 +1685,5 @@ isValidUUID("123"); // false
 
 ---
 
-*Last Updated: 2025-11-26*
-*API Version: 2.0.0*
-
+*Last Updated: 2025-12-08*
+*API Version: 2.1.0*

@@ -215,6 +215,67 @@ class AuthController {
       next(error);
     }
   }
+
+  async forgotPassword(req, res, next) {
+    try {
+      const { email } = req.body;
+
+      // Extract context for audit logging
+      const userAgent = req.headers['user-agent'] || null;
+      const ipAddress = req.ip || req.connection.remoteAddress || null;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is required",
+        });
+      }
+
+      const response = await authService.requestPasswordReset(
+        email,
+        userAgent,
+        ipAddress
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: response.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resetPassword(req, res, next) {
+    try {
+      const { access_token, password } = req.body;
+
+      // Extract context for audit logging
+      const userAgent = req.headers['user-agent'] || null;
+      const ipAddress = req.ip || req.connection.remoteAddress || null;
+
+      if (!access_token || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Access token and password are required",
+        });
+      }
+
+      const response = await authService.resetPassword(
+        access_token,
+        password,
+        userAgent,
+        ipAddress
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: response.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new AuthController();

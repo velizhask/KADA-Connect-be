@@ -114,10 +114,17 @@ const apiLimiter = createRateLimiter({
   message: 'Too many API requests from this IP, please try again in 15 minutes.'
 });
 
+const forgotPasswordLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000, // 60 minutes
+  maxRequests: 3, // 3 requests per hour
+  message: 'Too many password reset requests from this IP, please try again in 1 hour.'
+});
+
 module.exports = {
   RateLimiter,
   createRateLimiter,
   defaultLimiter,
   imageProxyLimiter,
-  apiLimiter
+  apiLimiter,
+  forgotPasswordLimiter
 };

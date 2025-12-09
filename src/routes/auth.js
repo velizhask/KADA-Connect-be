@@ -6,6 +6,7 @@ const authController = require("../controllers/authController");
 const { sanitizeInput, validateRequest } = require("../middlewares/validation");
 const { authSchemas } = require("../validators/schemas");
 const { requireAuth, requireApproval } = require("../middlewares/auth");
+const { forgotPasswordLimiter } = require("../middlewares/rateLimiter");
 
 // Rate limiter for logout endpoint - prevent abuse
 const logoutLimiter = rateLimit({
@@ -32,6 +33,19 @@ router.post(
 router.post("/login", validateRequest(authSchemas.login), authController.login);
 
 router.post("/logout", requireAuth, logoutLimiter, authController.logout);
+
+router.post(
+  "/forgot-password",
+  forgotPasswordLimiter.middleware(),
+  validateRequest(authSchemas.forgotPassword),
+  authController.forgotPassword
+);
+
+router.post(
+  "/reset-password",
+  validateRequest(authSchemas.resetPassword),
+  authController.resetPassword
+);
 
 router.get("/me", requireAuth, requireApproval, authController.getMyProfile);
 

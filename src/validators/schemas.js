@@ -359,6 +359,21 @@ const authSchemas = {
       "any.required": "Password is required",
     }),
   }),
+  forgotPassword: Joi.object({
+    email: Joi.string().email().required().messages({
+      "string.email": "Email must be valid",
+      "any.required": "Email is required",
+    }),
+  }),
+  resetPassword: Joi.object({
+    access_token: Joi.string().required().messages({
+      "any.required": "Access token is required",
+    }),
+    password: Joi.string().min(8).required().messages({
+      "string.min": "Password must be at least 8 characters",
+      "any.required": "Password is required",
+    }),
+  }),
 };
 
 module.exports = {
