@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "kada-connect-backend-api",
 		"name": "KADA Connect Backend API",
-		"description": "Comprehensive API collection for KADA Connect Backend with all 71 endpoints\n\n## Authentication Flow\n1. Register: `POST /api/auth/register`\n2. Login: `POST /api/auth/login` (receives access_token, refresh_token)\n3. Use token: `Bearer {{accessToken}}`\n4. Refresh: Automatic via Supabase\n5. Logout: `POST /api/auth/logout`\n\n## Environment Variables\n- `baseUrl`: API base URL (default: http://localhost:3001/api)\n- `accessToken`: Bearer token from login\n- `refreshToken`: Refresh token from login\n- `testEmail`: Test user email\n- `testPassword`: Test user password\n- `adminKey`: Admin key for admin endpoints\n- `studentId`: Student ID for testing\n- `companyId`: Company ID for testing\n- `userId`: Current user ID\n\n## Rate Limits\n- Login: 5 attempts per 15 minutes\n- Logout: 10 attempts per 15 minutes\n- Registration: 10 attempts per 15 minutes\n\n## Version\n1.0.0\n",
+		"description": "Comprehensive API collection for KADA Connect Backend with all endpoints\n\n## Authentication Flow\n1. Register: `POST /api/auth/register`\n2. Login: `POST /api/auth/login` (receives access_token, refresh_token)\n3. Use token: `Bearer {{accessToken}}`\n4. Refresh: Automatic via Supabase\n5. Logout: `POST /api/auth/logout`\n6. Forgot Password: `POST /api/auth/forgot-password`\n7. Reset Password: `POST /api/auth/reset-password`\n\n## Password Reset Flow\n1. User requests reset: `POST /api/auth/forgot-password` with email\n2. User receives email with reset link\n3. Link redirects to frontend: `http://localhost:3000/#access_token=...&refresh_token=...&type=recovery`\n4. User submits new password: `POST /api/auth/reset-password` with access_token and new password\n5. Password is updated, user redirected to login\n\n## Environment Variables\n- `baseUrl`: API base URL (default: http://localhost:3001/api)\n- `accessToken`: Bearer token from login\n- `refreshToken`: Refresh token from login\n- `testEmail`: Test user email\n- `testPassword`: Test user password\n- `adminKey`: Admin key for admin endpoints\n- `studentId`: Student ID for testing\n- `companyId`: Company ID for testing\n- `userId`: Current user ID\n- `resetAccessToken`: Access token from password reset email (for testing)\n- `rateTestEmail`: Email for rate limit testing\n\n## Rate Limits\n- Login: 5 attempts per 15 minutes\n- Logout: 10 attempts per 15 minutes\n- Registration: 10 attempts per 15 minutes\n- Forgot Password: 3 requests per hour per IP\n\n## Version\n1.2.0 - Fixed Password Reset to use access_token (Implicit Flow)\n",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "kada-connect-team"
 	},
@@ -274,6 +274,405 @@
 								"me"
 							]
 						}
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has success message', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.success).to.be.true;",
+									"    pm.expect(response.message).to.exist;",
+									"    pm.expect(response.message).to.include('email sent');",
+									"});",
+									"",
+									"pm.test('No sensitive data in response', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.not.have.property('password');",
+									"    pm.expect(response).to.not.have.property('token');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Set default test email if not provided",
+									"if (!pm.environment.get('testEmail')) {",
+									"    pm.environment.set('testEmail', 'testuser@example.com');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{testEmail}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/forgot-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"forgot-password"
+							]
+						},
+						"description": "Request password reset email"
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Password reset successful', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.success).to.be.true;",
+									"    pm.expect(response.message).to.exist;",
+									"    pm.expect(response.message).to.include('successfully');",
+									"});",
+									"",
+									"pm.test('Response has no sensitive data', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.not.have.property('password');",
+									"    pm.expect(response).to.not.have.property('token');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Note: In a real scenario, access_token would come from the email link URL fragment",
+									"// The email link format: http://localhost:3000/#access_token=...&refresh_token=...&type=recovery",
+									"// Extract the access_token from the URL fragment (after #)",
+									"if (!pm.environment.get('resetAccessToken')) {",
+									"    pm.environment.set('resetAccessToken', 'YOUR_ACCESS_TOKEN_FROM_EMAIL');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"access_token\": \"{{resetAccessToken}}\",\n  \"password\": \"NewPassword123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/reset-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"reset-password"
+							]
+						},
+						"description": "Reset password with access_token from email link"
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password - Rate Limit Test",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 429 Too Many Requests', function () {",
+									"    pm.response.to.have.status(429);",
+									"});",
+									"",
+									"pm.test('Rate limit headers present', function () {",
+									"    pm.expect(pm.response.headers.get('X-RateLimit-Limit')).to.not.be.null;",
+									"    pm.expect(pm.response.headers.get('X-RateLimit-Remaining')).to.not.be.null;",
+									"    pm.expect(pm.response.headers.get('X-RateLimit-Reset')).to.not.be.null;",
+									"});",
+									"",
+									"pm.test('Retry-After header present', function () {",
+									"    const retryAfter = pm.response.headers.get('Retry-After');",
+									"    pm.expect(retryAfter).to.not.be.null;",
+									"    pm.expect(parseInt(retryAfter)).to.be.a('number');",
+									"});",
+									"",
+									"pm.test('Error message indicates rate limiting', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.message).to.include('Too many');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Set a different email to test rate limiting",
+									"if (!pm.environment.get('rateTestEmail')) {",
+									"    pm.environment.set('rateTestEmail', 'ratetest@example.com');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{rateTestEmail}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/forgot-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"forgot-password"
+							]
+						},
+						"description": "Test rate limiting (run after 3 successful forgot password requests)"
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password - Invalid Email",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 400 Bad Request', function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test('Validation error message', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.success).to.be.false;",
+									"    pm.expect(response.message).to.exist;",
+									"});",
+									"",
+									"pm.test('No sensitive information leaked', function () {",
+									"    const responseText = JSON.stringify(pm.response.json()).toLowerCase();",
+									"    pm.expect(responseText).to.not.include('invalid');",
+									"    pm.expect(responseText).to.not.include('not found');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"invalid-email\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/forgot-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"forgot-password"
+							]
+						},
+						"description": "Test forgot password with invalid email format"
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password - Missing Fields",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 400 Bad Request', function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test('Validation error for missing fields', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.success).to.be.false;",
+									"    pm.expect(response.message).to.exist;",
+									"    pm.expect(response.error).to.exist;",
+									"});",
+									"",
+									"pm.test('Error indicates required fields', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.error).to.include('required');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"password\": \"short\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/reset-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": "auth",
+							"path": [
+								"auth",
+								"reset-password"
+							]
+						},
+						"description": "Test reset password with missing required fields"
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password - Invalid Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status is 400 or 401 Bad Request', function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 401]);",
+									"});",
+									"",
+									"pm.test('Error message for invalid token', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.success).to.be.false;",
+									"    pm.expect(response.message).to.exist;",
+									"});",
+									"",
+									"pm.test('No sensitive data in error response', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.not.have.property('password');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"access_token\": \"invalid_access_token\",\n  \"password\": \"newpassword123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/reset-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"reset-password"
+							]
+						},
+						"description": "Test reset password with invalid token"
 					},
 					"response": []
 				}

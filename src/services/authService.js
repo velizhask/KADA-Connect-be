@@ -545,6 +545,167 @@ class AuthService {
       console.error(`[ERROR] Failed to clear cache for user ${userId}:`, error.message);
     }
   }
+
+  /**
+   * Request password reset email
+   *
+   * @async
+   * @param {string} email - User's email
+   * @param {string} userAgent - Optional User-Agent header for audit logging
+   * @param {string} ipAddress - Optional IP address for audit logging
+   * @returns {Promise<Object>} - Success status
+   * @throws {Error} If email is invalid or request fails
+   */
+  async requestPasswordReset(email, userAgent = null, ipAddress = null) {
+    try {
+      if (!email) {
+        await this.logAuditEvent({
+          action: 'password_reset_request',
+          success: false,
+          ipAddress,
+          userAgent,
+          errorMessage: "Email is required",
+          metadata: { email }
+        });
+        throw new Error("Email is required");
+      }
+
+      // Get the frontend URL from environment
+      const frontendUrl = process.env.ALLOWED_ORIGINS?.split(',')[1]?.trim() || 'http://localhost:5173';
+      const redirectTo = `${frontendUrl}/reset-password`;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo
+      });
+
+      if (error) {
+        console.error("[ERROR] Password reset request failed:", error.message);
+
+        await this.logAuditEvent({
+          action: 'password_reset_request',
+          success: false,
+          ipAddress,
+          userAgent,
+          errorMessage: error.message,
+          metadata: { email }
+        });
+
+        throw new Error(error.message);
+      }
+
+      // Log successful password reset request
+      await this.logAuditEvent({
+        action: 'password_reset_request',
+        success: true,
+        ipAddress,
+        userAgent,
+        metadata: { email }
+      });
+
+      return {
+        success: true,
+        message: "Password reset email sent successfully"
+      };
+    } catch (error) {
+      console.error("[ERROR] AuthService.requestPasswordReset:", error?.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Reset password using access token from email link
+   *
+   * @async
+   * @param {string} accessToken - Access token from email link
+   * @param {string} newPassword - New password
+   * @param {string} userAgent - Optional User-Agent header for audit logging
+   * @param {string} ipAddress - Optional IP address for audit logging
+   * @returns {Promise<Object>} - Success status
+   * @throws {Error} If token is invalid or password update fails
+   */
+  async resetPassword(accessToken, newPassword, userAgent = null, ipAddress = null) {
+    try {
+      if (!accessToken || !newPassword) {
+        throw new Error("Access token and new password are required");
+      }
+
+      if (newPassword.length < 8) {
+        throw new Error("Password must be at least 8 characters");
+      }
+
+      // Decode JWT to extract user ID
+      let userId;
+      try {
+        const base64Url = accessToken.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        const payload = JSON.parse(jsonPayload);
+        userId = payload.sub;
+      } catch (decodeError) {
+        console.error("[ERROR] Failed to decode access token:", decodeError.message);
+
+        await this.logAuditEvent({
+          action: 'password_reset',
+          success: false,
+          ipAddress,
+          userAgent,
+          errorMessage: "Invalid access token format"
+        });
+
+        throw new Error("Invalid access token format");
+      }
+
+      if (!userId) {
+        throw new Error("Invalid token: user ID not found");
+      }
+
+      // Update the user's password using admin API
+      const { error: updateError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { password: newPassword }
+      );
+
+      if (updateError) {
+        console.error("[ERROR] Password update failed:", updateError.message);
+
+        await this.logAuditEvent({
+          userId: userId,
+          action: 'password_reset',
+          success: false,
+          ipAddress,
+          userAgent,
+          errorMessage: updateError.message
+        });
+
+        throw new Error(updateError.message);
+      }
+
+      // Log successful password reset
+      await this.logAuditEvent({
+        userId: userId,
+        action: 'password_reset',
+        success: true,
+        ipAddress,
+        userAgent
+      });
+
+      // Clear user cache
+      await this.clearUserCache(userId);
+
+      return {
+        success: true,
+        message: "Password reset successfully"
+      };
+    } catch (error) {
+      console.error("[ERROR] AuthService.resetPassword:", error?.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = new AuthService();
