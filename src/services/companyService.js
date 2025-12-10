@@ -222,10 +222,13 @@ class CompanyService {
         throw new Error('Failed to fetch industries');
       }
 
-      // Get unique industries and sort them
-      const industries = [...new Set(data.map(item => item['industry_sector']))]
-        .filter(Boolean)
-        .sort();
+      // Split industries by common delimiters and get unique values
+      const allIndustries = data.map(item => {
+        const industries = item['industry_sector'] || '';
+        return industries.split(/[,\n|]/).map(industry => industry.trim()).filter(Boolean);
+      }).flat();
+
+      const industries = [...new Set(allIndustries)].sort();
 
       return industries;
     } catch (error) {
