@@ -220,7 +220,7 @@
 					"response": []
 				},
 				{
-					"name": "Get My Profile (Legacy)",
+					"name": "Get My User Data",
 					"event": [
 						{
 							"listen": "test",
@@ -608,7 +608,6 @@
 							"host": [
 								"{{baseUrl}}"
 							],
-							"path": "auth",
 							"path": [
 								"auth",
 								"reset-password"
