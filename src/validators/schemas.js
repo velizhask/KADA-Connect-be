@@ -2,10 +2,28 @@ const Joi = require("joi");
 
 const companySchemas = {
   create: Joi.object({
-    emailAddress: Joi.string().email().required().messages({
-      "string.email": "Email address must be a valid email",
-      "any.required": "Email address is required",
-    }),
+    emailAddress: Joi.string()
+      .email()
+      .disallow(
+        "gmail.com",
+        "yahoo.com",
+        "hotmail.com",
+        "outlook.com",
+        "aol.com",
+        "icloud.com",
+        "protonmail.com",
+        "yandex.com",
+        "mail.com",
+        "live.com",
+        "msn.com",
+        "me.com"
+      )
+      .required()
+      .messages({
+        "string.email": "Email address must be a valid email",
+        "any.required": "Email address is required",
+        "any.disallow": "Please use your organization/business email address, not personal email domains like Gmail, Yahoo, etc.",
+      }),
     companyName: Joi.string().min(1).max(200).required().messages({
       "string.min": "Company name cannot be empty",
       "string.max": "Company name cannot exceed 200 characters",
@@ -65,15 +83,33 @@ const companySchemas = {
     visibleContactInfo: Joi.boolean().optional().default(false).messages({
       "boolean.base": "Contact info visible must be a boolean",
     }),
-    isVisible: Joi.boolean().optional().default(true).messages({
+    isVisible: Joi.boolean().optional().default(false).messages({
       "boolean.base": "isVisible must be a boolean",
     }),
   }),
 
   update: Joi.object({
-    emailAddress: Joi.string().email().optional().messages({
-      "string.email": "Email address must be a valid email",
-    }),
+    emailAddress: Joi.string()
+      .email()
+      .disallow(
+        "gmail.com",
+        "yahoo.com",
+        "hotmail.com",
+        "outlook.com",
+        "aol.com",
+        "icloud.com",
+        "protonmail.com",
+        "yandex.com",
+        "mail.com",
+        "live.com",
+        "msn.com",
+        "me.com"
+      )
+      .optional()
+      .messages({
+        "string.email": "Email address must be a valid email",
+        "any.disallow": "Please use your organization/business email address, not personal email domains like Gmail, Yahoo, etc.",
+      }),
     companyName: Joi.string().min(1).max(200).optional().messages({
       "string.min": "Company name cannot be empty",
       "string.max": "Company name cannot exceed 200 characters",
@@ -216,7 +252,7 @@ const studentSchemas = {
     phone: Joi.string().max(20).optional().messages({
       "string.max": "Phone number cannot exceed 20 characters",
     }),
-    isVisible: Joi.boolean().optional().default(true).messages({
+    isVisible: Joi.boolean().optional().default(false).messages({
       "boolean.base": "isVisible must be a boolean",
     }),
   }),
@@ -335,19 +371,46 @@ const lookupSchemas = {
 const authSchemas = {
   register: Joi.object({
     email: Joi.string().email().required().messages({
-      "string.email": "Email must be valid",
-      "any.required": "Email is required",
+      'string.email': 'Email must be valid',
+      'any.required': 'Email is required',
     }),
     fullName: Joi.string().required().messages({
-      "any.required": "Full name is required",
+      'any.required': 'Full name is required',
     }),
     password: Joi.string().min(8).required().messages({
-      "string.min": "Password must be at least 8 characters",
-      "any.required": "Password is required",
+      'string.min': 'Password must be at least 8 characters',
+      'any.required': 'Password is required',
     }),
-    role: Joi.string().valid("student", "company", "admin").messages({
-      "any.only": "Role must be student, company or admin",
+    role: Joi.string().valid('student', 'company', 'admin').messages({
+      'any.only': 'Role must be student, company or admin',
     }),
+  })
+  .custom((value, helpers) => {
+    if (value.role === 'company') {
+      const personalDomains = [
+        'gmail.com',
+        'yahoo.com',
+        'hotmail.com',
+        'outlook.com',
+        'aol.com',
+        'icloud.com',
+        'protonmail.com',
+        'yandex.com',
+        'mail.com',
+        'live.com',
+        'msn.com',
+        'me.com'
+      ];
+
+      const domain = value.email.split('@')[1];
+      if (personalDomains.includes(domain.toLowerCase())) {
+        return helpers.error('auth.email.personal', { domain });
+      }
+    }
+    return value;
+  }, 'organization email validation')
+  .messages({
+    'auth.email.personal': 'Please use your organization/business email address, not personal email domains like Gmail, Yahoo, etc.',
   }),
   login: Joi.object({
     email: Joi.string().email().required().messages({
