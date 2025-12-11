@@ -164,25 +164,48 @@ class LogService {
     routePath
   }) {
     try {
-      // Calculate only the changed fields (delta)
-      const changedFields = this.getChangedFields(oldValues, newValues);
+      let logData;
 
-      const logData = {
-        timestamp: new Date().toISOString(),
-        user_id: userId,
-        user_email: userEmail,
-        operation: 'UPDATE',
-        resource_type: resourceType,
-        resource_id: resourceId,
-        old_values: changedFields ? this.sanitizeData(changedFields) : null,
-        new_values: changedFields ? this.sanitizeData(changedFields) : null,
-        ip_address: this.extractIP(request),
-        request_id: request?.requestId || uuidv4(),
-        success: true,
-        error_message: null,
-        route_path: routePath,
-        user_agent: request?.headers?.['user-agent'] || null
-      };
+      // For bulk operations (resourceId is null) or when oldValues is null,
+      // save the full newValues instead of calculating changed fields
+      if (!resourceId || !oldValues) {
+        logData = {
+          timestamp: new Date().toISOString(),
+          user_id: userId,
+          user_email: userEmail,
+          operation: 'UPDATE',
+          resource_type: resourceType,
+          resource_id: resourceId,
+          old_values: oldValues ? this.sanitizeData(oldValues) : null,
+          new_values: newValues ? this.sanitizeData(newValues) : null,
+          ip_address: this.extractIP(request),
+          request_id: request?.requestId || uuidv4(),
+          success: true,
+          error_message: null,
+          route_path: routePath,
+          user_agent: request?.headers?.['user-agent'] || null
+        };
+      } else {
+        // Calculate only the changed fields (delta) for regular single-record updates
+        const changedFields = this.getChangedFields(oldValues, newValues);
+
+        logData = {
+          timestamp: new Date().toISOString(),
+          user_id: userId,
+          user_email: userEmail,
+          operation: 'UPDATE',
+          resource_type: resourceType,
+          resource_id: resourceId,
+          old_values: changedFields ? this.sanitizeData(changedFields) : null,
+          new_values: changedFields ? this.sanitizeData(changedFields) : null,
+          ip_address: this.extractIP(request),
+          request_id: request?.requestId || uuidv4(),
+          success: true,
+          error_message: null,
+          route_path: routePath,
+          user_agent: request?.headers?.['user-agent'] || null
+        };
+      }
 
       const { error } = await supabaseClient
         .from('crud_logs')

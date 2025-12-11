@@ -55,6 +55,25 @@
 			"value": "",
 			"enabled": true,
 			"type": "text"
+		},
+		{
+			"key": "resetAccessToken",
+			"value": "",
+			"enabled": true,
+			"type": "text"
+		},
+		{
+			"key": "rateTestEmail",
+			"value": "",
+			"enabled": true,
+			"type": "text"
+		},
+		{
+			"key": "bulkApproveTestIds",
+			"value": "",
+			"enabled": true,
+			"type": "text",
+			"description": "example 'id1', 'id2', 'id3' (use double quotes for each id)"
 		}
 	],
 	"_postman_variable_scope": "environment",

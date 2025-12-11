@@ -704,7 +704,18 @@ class CompanyService {
 
       console.log('[DEBUG] Update data:', updateData);
 
-      const { data, error, count } = await supabase
+      // First, get count of companies that will be updated
+      const { count: totalCount, error: countError } = await supabase
+        .from('companies')
+        .select('*', { count: 'exact', head: true })
+        .in('id', companyIds);
+
+      if (countError) {
+        console.error('[ERROR] Failed to count companies:', countError.message);
+      }
+
+      // Update all matching companies
+      const { data, error } = await supabase
         .from('companies')
         .update(updateData)
         .in('id', companyIds)
@@ -715,7 +726,8 @@ class CompanyService {
         throw new Error(`Failed to bulk update companies: ${error.message}`);
       }
 
-      console.log('[DEBUG] Updated count:', count);
+      console.log('[DEBUG] Total matching companies:', totalCount);
+      console.log('[DEBUG] Companies with changes:', data?.length);
       console.log('[DEBUG] Updated companies:', data);
 
       // Log successful bulk UPDATE operation
@@ -729,8 +741,14 @@ class CompanyService {
           newValues: {
             operation: 'BULK_APPROVE',
             companyIds: companyIds,
-            isVisible: visibleValue,
-            updatedCount: data.length
+            matchedCount: totalCount || 0,
+            updatedCount: data?.length || 0,
+            affectedCompanies: data?.map(c => ({
+              id: c.id,
+              companyName: c['company_name'],
+              oldIsVisible: 'unknown',
+              newIsVisible: c['is_visible']
+            })) || []
           },
           request: req,
           routePath: req.path
@@ -744,13 +762,14 @@ class CompanyService {
 
       return {
         success: true,
-        message: `Successfully updated ${data.length} companies`,
-        updatedCount: data.length,
-        companies: data.map(company => ({
+        message: `Successfully processed ${totalCount || 0} companies (${data?.length || 0} changed)`,
+        matchedCount: totalCount || 0,
+        updatedCount: data?.length || 0,
+        companies: data?.map(company => ({
           id: company.id,
           companyName: company['company_name'],
           isVisible: company['is_visible']
-        }))
+        })) || []
       };
     } catch (error) {
       // Log failed operation

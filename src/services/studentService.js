@@ -937,7 +937,18 @@ class StudentService {
 
       console.log('[DEBUG] Update data:', updateData);
 
-      const { data, error, count } = await supabase
+      // First, get count of students that will be updated
+      const { count: totalCount, error: countError } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .in('id', studentIds);
+
+      if (countError) {
+        console.error('[ERROR] Failed to count students:', countError.message);
+      }
+
+      // Update all matching students
+      const { data, error } = await supabase
         .from('students')
         .update(updateData)
         .in('id', studentIds)
@@ -948,22 +959,29 @@ class StudentService {
         throw new Error(`Failed to bulk update students: ${error.message}`);
       }
 
-      console.log('[DEBUG] Updated count:', count);
+      console.log('[DEBUG] Total matching students:', totalCount);
+      console.log('[DEBUG] Students with changes:', data?.length);
       console.log('[DEBUG] Updated students:', data);
 
       // Log successful bulk UPDATE operation
-      if (req && data && data.length > 0) {
+      if (req) {
         await logService.logUpdate({
           userId: req.user?.id,
           userEmail: req.user?.email,
           resourceType: 'student',
-          resourceId: null, // Bulk operation
+          resourceId: null, // Bulk operation - multiple resources
           oldValues: null,
           newValues: {
             operation: 'BULK_APPROVE',
             studentIds: studentIds,
-            isVisible: visibleValue,
-            updatedCount: data.length
+            matchedCount: totalCount || 0,
+            updatedCount: data?.length || 0,
+            affectedStudents: data?.map(s => ({
+              id: s.id,
+              fullName: s['full_name'],
+              oldIsVisible: 'unknown',
+              newIsVisible: s['is_visible']
+            })) || []
           },
           request: req,
           routePath: req.path
@@ -977,13 +995,14 @@ class StudentService {
 
       return {
         success: true,
-        message: `Successfully updated ${data.length} students`,
-        updatedCount: data.length,
-        students: data.map(student => ({
+        message: `Successfully processed ${totalCount || 0} students (${data?.length || 0} changed)`,
+        matchedCount: totalCount || 0,
+        updatedCount: data?.length || 0,
+        students: data?.map(student => ({
           id: student.id,
           fullName: student['full_name'],
           isVisible: student['is_visible']
-        }))
+        })) || []
       };
     } catch (error) {
       // Log failed operation
