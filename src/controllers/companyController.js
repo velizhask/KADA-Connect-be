@@ -370,6 +370,42 @@ class CompanyController {
       next(error);
     }
   }
+
+  async bulkApproveCompanies(req, res, next) {
+    try {
+      const { companyIds, isVisible = true } = req.body;
+
+      if (!companyIds || !Array.isArray(companyIds) || companyIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'companyIds array is required and must not be empty',
+          data: null
+        });
+      }
+
+      // Authorization check: only admin can bulk approve
+      const currentUser = req.user;
+      const userRole = await authService.getUserRole(currentUser);
+
+      if (userRole !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Only admin users can bulk approve companies',
+          data: null
+        });
+      }
+
+      const result = await companyService.bulkApproveCompanies(companyIds, isVisible, req);
+
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new CompanyController();

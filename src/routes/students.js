@@ -112,6 +112,14 @@ router.delete(
   studentController.deleteStudent
 );
 
+// POST /api/students/bulk-approve - Bulk approve students (admin only)
+router.post(
+  "/bulk-approve",
+  requireAuth,
+  requireAdmin,
+  studentController.bulkApproveStudents
+);
+
 // ============== FILE UPLOAD ROUTES ==============
 
 // POST /api/students/:id/cv - Upload CV

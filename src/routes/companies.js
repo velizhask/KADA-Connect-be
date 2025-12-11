@@ -18,6 +18,7 @@ const {
 } = require('../middlewares/cacheHeaders');
 const { requireAuth } = require('../middlewares/auth');
 const roleCheck = require('../middlewares/roleCheck');
+const { requireAdmin } = require('../middlewares/roleCheck');
 const { uploadLogo, handleUploadError } = require('../middlewares/fileUpload');
 
 // Apply sanitization middleware to all routes
@@ -100,6 +101,14 @@ router.delete(
   roleCheck(['admin', 'company']),
   validateCompanyId,
   companyController.deleteCompany
+);
+
+// POST /api/companies/bulk-approve - Bulk approve companies (admin only)
+router.post(
+  '/bulk-approve',
+  requireAuth,
+  requireAdmin,
+  companyController.bulkApproveCompanies
 );
 
 // ============== FILE UPLOAD ROUTES ==============

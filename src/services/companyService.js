@@ -672,6 +672,107 @@ class CompanyService {
     }
   }
 
+  async bulkApproveCompanies(companyIds, isVisible = true, req = null) {
+    try {
+      console.log('[DEBUG] === BULK APPROVE COMPANIES START ===');
+      console.log('[DEBUG] Company IDs:', companyIds);
+      console.log('[DEBUG] isVisible:', isVisible);
+
+      // Validate input
+      if (!companyIds || !Array.isArray(companyIds) || companyIds.length === 0) {
+        throw new Error('Company IDs array is required and must not be empty');
+      }
+
+      // Validate UUID format for each ID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const invalidIds = companyIds.filter(id => !uuidRegex.test(id));
+      if (invalidIds.length > 0) {
+        throw new Error(`Invalid UUID format for IDs: ${invalidIds.join(', ')}`);
+      }
+
+      // Convert string boolean to actual boolean if needed
+      let visibleValue = isVisible;
+      if (typeof isVisible === 'string') {
+        visibleValue = isVisible.toLowerCase() === 'true';
+      }
+
+      // Update all companies with the same visibility value
+      const updateData = {
+        'is_visible': visibleValue,
+        'timestamp': new Date().toISOString()
+      };
+
+      console.log('[DEBUG] Update data:', updateData);
+
+      const { data, error, count } = await supabase
+        .from('companies')
+        .update(updateData)
+        .in('id', companyIds)
+        .select('id, "company_name", is_visible');
+
+      if (error) {
+        console.error('[ERROR] Failed to bulk update companies:', error.message);
+        throw new Error(`Failed to bulk update companies: ${error.message}`);
+      }
+
+      console.log('[DEBUG] Updated count:', count);
+      console.log('[DEBUG] Updated companies:', data);
+
+      // Log successful bulk UPDATE operation
+      if (req && data && data.length > 0) {
+        await logService.logUpdate({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'company',
+          resourceId: null, // Bulk operation
+          oldValues: null,
+          newValues: {
+            operation: 'BULK_APPROVE',
+            companyIds: companyIds,
+            isVisible: visibleValue,
+            updatedCount: data.length
+          },
+          request: req,
+          routePath: req.path
+        });
+      }
+
+      // Clear cache
+      responseCache.clearByTable('companies');
+
+      console.log('[DEBUG] === BULK APPROVE COMPANIES SUCCESS ===');
+
+      return {
+        success: true,
+        message: `Successfully updated ${data.length} companies`,
+        updatedCount: data.length,
+        companies: data.map(company => ({
+          id: company.id,
+          companyName: company['company_name'],
+          isVisible: company['is_visible']
+        }))
+      };
+    } catch (error) {
+      // Log failed operation
+      if (req) {
+        await logService.logError({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'company',
+          resourceId: null,
+          operation: 'BULK_APPROVE',
+          errorMessage: error.message,
+          request: req,
+          routePath: req.path,
+          newValues: { companyIds, isVisible }
+        });
+      }
+
+      console.error('[ERROR] CompanyService.bulkApproveCompanies:', error.message);
+      throw error;
+    }
+  }
+
   transformCompanyDataForDB(companyData) {
     const dbData = {
       'id': companyData.id,
