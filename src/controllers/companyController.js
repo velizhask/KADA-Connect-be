@@ -19,7 +19,8 @@ class CompanyController {
         }
       });
 
-      const result = await companyService.getAllCompanies(filters);
+      const currentUser = req.user;
+      const result = await companyService.getAllCompanies(filters, currentUser);
 
       res.status(200).json({
         success: true,
@@ -43,7 +44,8 @@ class CompanyController {
         });
       }
 
-      const company = await companyService.getCompanyById(id);
+      const currentUser = req.user;
+      const company = await companyService.getCompanyById(id, currentUser);
 
       if (!company) {
         return res.status(404).json({
@@ -85,7 +87,8 @@ class CompanyController {
         }
       });
 
-      const companies = await companyService.searchCompanies(q.trim(), filters);
+      const currentUser = req.user;
+      const companies = await companyService.searchCompanies(q.trim(), filters, currentUser);
 
       res.status(200).json({
         success: true,
@@ -362,6 +365,42 @@ class CompanyController {
             formats: ['jpg', 'jpeg', 'png', 'gif', 'webp']
           }
         }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async bulkApproveCompanies(req, res, next) {
+    try {
+      const { companyIds, isVisible = true } = req.body;
+
+      if (!companyIds || !Array.isArray(companyIds) || companyIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'companyIds array is required and must not be empty',
+          data: null
+        });
+      }
+
+      // Authorization check: only admin can bulk approve
+      const currentUser = req.user;
+      const userRole = await authService.getUserRole(currentUser);
+
+      if (userRole !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Only admin users can bulk approve companies',
+          data: null
+        });
+      }
+
+      const result = await companyService.bulkApproveCompanies(companyIds, isVisible, req);
+
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result
       });
     } catch (error) {
       next(error);

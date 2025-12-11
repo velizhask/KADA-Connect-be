@@ -137,6 +137,18 @@ The `isVisible` field implements **soft delete** functionality:
 - Soft delete before permanent deletion
 - Hiding inactive accounts
 
+**Boolean Conversion:**
+The API automatically converts string values to boolean:
+- `"true"` (string) → `true` (boolean)
+- `"false"` (string) → `false` (boolean)
+- `true` (boolean) → remains `true`
+- `false` (boolean) → remains `false`
+
+recommended to just use true or false (no single quotes)
+
+**Admin Visibility:**
+Admin users can see the `isVisible` field in all student and company responses, allowing them to manage visibility across the platform.
+
 ---
 
 ## Authentication
@@ -616,6 +628,59 @@ await fetch(`${API_BASE_URL}/companies/validate-logo`, {
 });
 ```
 
+### POST /api/companies/bulk-approve
+**Bulk approve/hide companies (admin only)**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+await fetch(`${API_BASE_URL}/companies/bulk-approve`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    "companyIds": [
+      "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+    ],
+    "isVisible": true
+  })
+});
+```
+
+**Response:**
+```javascript
+{
+  "success": true,
+  "message": "Successfully processed 2 companies (2 changed)",
+  "data": {
+    "success": true,
+    "matchedCount": 2,
+    "updatedCount": 2,
+    "companies": [
+      {
+        "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+        "companyName": "Tech Corp",
+        "isVisible": true
+      },
+      {
+        "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+        "companyName": "Innovation Labs",
+        "isVisible": true
+      }
+    ]
+  }
+}
+```
+
+**Important Notes:**
+- `isVisible` accepts both boolean and string values ("true"/"false" will be converted)
+- Only Admin role can access this endpoint
+- All company IDs must be valid UUIDs
+- Returns count of matched records vs. actually updated records
+
 ---
 
 ## Students API
@@ -822,6 +887,59 @@ const response = await fetch(`${API_BASE_URL}/students/stats`, {
 });
 const data = await response.json();
 ```
+
+### POST /api/students/bulk-approve
+**Bulk approve/hide students (admin only)**
+
+**Request:**
+```javascript
+const token = localStorage.getItem('access_token');
+await fetch(`${API_BASE_URL}/students/bulk-approve`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    "studentIds": [
+      "550e8400-e29b-41d4-a716-446655440000",
+      "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+    ],
+    "isVisible": true
+  })
+});
+```
+
+**Response:**
+```javascript
+{
+  "success": true,
+  "message": "Successfully processed 2 students (2 changed)",
+  "data": {
+    "success": true,
+    "matchedCount": 2,
+    "updatedCount": 2,
+    "students": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "fullName": "John Doe",
+        "isVisible": true
+      },
+      {
+        "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+        "fullName": "Jane Smith",
+        "isVisible": true
+      }
+    ]
+  }
+}
+```
+
+**Important Notes:**
+- `isVisible` accepts both boolean and string values ("true"/"false" will be converted)
+- Only Admin role can access this endpoint
+- All student IDs must be valid UUIDs
+- Returns count of matched records vs. actually updated records
 
 ---
 
@@ -1599,6 +1717,7 @@ try {
 - `GET /api/companies/tech-roles` - Get tech roles
 - `GET /api/companies/stats` - Get statistics
 - `POST /api/companies/validate-logo` - Validate logo URL
+- `POST /api/companies/bulk-approve` - Bulk approve (admin)
 - `POST /api/companies/:id/logo` - Upload logo
 - `GET /api/companies/:id/logo` - Get logo
 - `DELETE /api/companies/:id/logo` - Delete logo
@@ -1616,6 +1735,7 @@ try {
 - `GET /api/students/industries` - Get industries
 - `GET /api/students/skills` - Get skills
 - `GET /api/students/stats` - Get statistics
+- `POST /api/students/bulk-approve` - Bulk approve (admin)
 - `POST /api/students/:id/cv` - Upload CV
 - `GET /api/students/:id/cv` - Get CV
 - `DELETE /api/students/:id/cv` - Delete CV
@@ -1685,5 +1805,5 @@ isValidUUID("123"); // false
 
 ---
 
-*Last Updated: 2025-12-08*
-*API Version: 2.1.0*
+*Last Updated: 2025-12-11*
+*API Version: 2.2.0*

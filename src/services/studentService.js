@@ -905,6 +905,126 @@ class StudentService {
     }
   }
 
+  async bulkApproveStudents(studentIds, isVisible = true, req = null) {
+    try {
+      console.log('[DEBUG] === BULK APPROVE STUDENTS START ===');
+      console.log('[DEBUG] Student IDs:', studentIds);
+      console.log('[DEBUG] isVisible:', isVisible);
+
+      // Validate input
+      if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+        throw new Error('Student IDs array is required and must not be empty');
+      }
+
+      // Validate UUID format for each ID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const invalidIds = studentIds.filter(id => !uuidRegex.test(id));
+      if (invalidIds.length > 0) {
+        throw new Error(`Invalid UUID format for IDs: ${invalidIds.join(', ')}`);
+      }
+
+      // Convert string boolean to actual boolean if needed
+      let visibleValue = isVisible;
+      if (typeof isVisible === 'string') {
+        visibleValue = isVisible.toLowerCase() === 'true';
+      }
+
+      // Update all students with the same visibility value
+      const updateData = {
+        'is_visible': visibleValue,
+        'timestamp': new Date().toISOString()
+      };
+
+      console.log('[DEBUG] Update data:', updateData);
+
+      // First, get count of students that will be updated
+      const { count: totalCount, error: countError } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .in('id', studentIds);
+
+      if (countError) {
+        console.error('[ERROR] Failed to count students:', countError.message);
+      }
+
+      // Update all matching students
+      const { data, error } = await supabase
+        .from('students')
+        .update(updateData)
+        .in('id', studentIds)
+        .select('id, "full_name", is_visible');
+
+      if (error) {
+        console.error('[ERROR] Failed to bulk update students:', error.message);
+        throw new Error(`Failed to bulk update students: ${error.message}`);
+      }
+
+      console.log('[DEBUG] Total matching students:', totalCount);
+      console.log('[DEBUG] Students with changes:', data?.length);
+      console.log('[DEBUG] Updated students:', data);
+
+      // Log successful bulk UPDATE operation
+      if (req) {
+        await logService.logUpdate({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'student',
+          resourceId: null, // Bulk operation - multiple resources
+          oldValues: null,
+          newValues: {
+            operation: 'BULK_APPROVE',
+            studentIds: studentIds,
+            matchedCount: totalCount || 0,
+            updatedCount: data?.length || 0,
+            affectedStudents: data?.map(s => ({
+              id: s.id,
+              fullName: s['full_name'],
+              oldIsVisible: 'unknown',
+              newIsVisible: s['is_visible']
+            })) || []
+          },
+          request: req,
+          routePath: req.path
+        });
+      }
+
+      // Clear cache
+      responseCache.clearEmploymentStatusCache('Student bulk approve');
+
+      console.log('[DEBUG] === BULK APPROVE STUDENTS SUCCESS ===');
+
+      return {
+        success: true,
+        message: `Successfully processed ${totalCount || 0} students (${data?.length || 0} changed)`,
+        matchedCount: totalCount || 0,
+        updatedCount: data?.length || 0,
+        students: data?.map(student => ({
+          id: student.id,
+          fullName: student['full_name'],
+          isVisible: student['is_visible']
+        })) || []
+      };
+    } catch (error) {
+      // Log failed operation
+      if (req) {
+        await logService.logError({
+          userId: req.user?.id,
+          userEmail: req.user?.email,
+          resourceType: 'student',
+          resourceId: null,
+          operation: 'BULK_APPROVE',
+          errorMessage: error.message,
+          request: req,
+          routePath: req.path,
+          newValues: { studentIds, isVisible }
+        });
+      }
+
+      console.error('[ERROR] StudentService.bulkApproveStudents:', error.message);
+      throw error;
+    }
+  }
+
   transformStudentDataForDB(studentData) {
     const dbData = {
       'id': studentData.id,
@@ -1005,7 +1125,12 @@ class StudentService {
       dbData['email_address'] = patchData.email || null;
     }
     if (patchData.isVisible !== undefined) {
-      dbData['is_visible'] = patchData.isVisible;
+      // Convert string 'true'/'false' to actual boolean, otherwise use as-is
+      if (typeof patchData.isVisible === 'string') {
+        dbData['is_visible'] = patchData.isVisible.toLowerCase() === 'true';
+      } else {
+        dbData['is_visible'] = patchData.isVisible;
+      }
     }
     if (patchData.batch !== undefined) {
       dbData['batch'] = patchData.batch;
@@ -1024,6 +1149,7 @@ class StudentService {
   transformStudentDataPublic(student, viewerRole = null, viewerId = null) {
     const isOwnData = viewerId && student.id === viewerId;
     const isStudentViewingOtherStudent = viewerRole === 'student' && !isOwnData;
+    const isAdmin = viewerRole === 'admin';
 
     // Base fields that everyone can see
     const baseData = {
@@ -1044,7 +1170,7 @@ class StudentService {
     }
 
     // For all other cases (admin, company, or viewing own data), show all fields
-    return {
+    const response = {
       ...baseData,
       university: student['university_institution'],
       major: student['program_major'],
@@ -1056,6 +1182,13 @@ class StudentService {
       timestamp: student['timestamp'],
       completionRate: this.calculateCompletionRate(student)
     };
+
+    // Include isVisible field for admin users
+    if (isAdmin) {
+      response.isVisible = student['is_visible'];
+    }
+
+    return response;
   }
 
   /**

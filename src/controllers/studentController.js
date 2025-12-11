@@ -424,6 +424,42 @@ class StudentController {
     }
   }
 
+  async bulkApproveStudents(req, res, next) {
+    try {
+      const { studentIds, isVisible = true } = req.body;
+
+      if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'studentIds array is required and must not be empty',
+          data: null
+        });
+      }
+
+      // Authorization check: only admin can bulk approve
+      const currentUser = req.user;
+      const userRole = await authService.getUserRole(currentUser);
+
+      if (userRole !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Only admin users can bulk approve students',
+          data: null
+        });
+      }
+
+      const result = await studentService.bulkApproveStudents(studentIds, isVisible, req);
+
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
 }
 
 module.exports = new StudentController();
