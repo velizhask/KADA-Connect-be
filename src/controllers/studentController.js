@@ -333,7 +333,7 @@ class StudentController {
       const currentUser = req.user;
 
       // Check if user is admin or owns this student profile
-      const student = await studentService.getStudentById(id);
+      const student = await studentService.getStudentById(id, currentUser);
       if (!student) {
         return res.status(404).json({
           success: false,
@@ -391,7 +391,7 @@ class StudentController {
       const userRole = await authService.getUserRole(currentUser);
 
       // Check if user is admin or owns this student profile
-      const student = await studentService.getStudentById(id);
+      const student = await studentService.getStudentById(id, currentUser);
       if (!student) {
         return res.status(404).json({
           success: false,

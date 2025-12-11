@@ -182,7 +182,7 @@ class CompanyController {
       const currentUser = req.user;
 
       // Check if user is admin or owns this company
-      const company = await companyService.getCompanyById(id);
+      const company = await companyService.getCompanyById(id, currentUser);
       if (!company) {
         return res.status(404).json({
           success: false,
@@ -246,7 +246,7 @@ class CompanyController {
       const currentUser = req.user;
 
       // Check if user is admin or owns this company
-      const company = await companyService.getCompanyById(id);
+      const company = await companyService.getCompanyById(id, currentUser);
       if (!company) {
         return res.status(404).json({
           success: false,
@@ -302,7 +302,7 @@ class CompanyController {
       const userRole = await authService.getUserRole(currentUser);
 
       // Check if user is admin or owns this company
-      const company = await companyService.getCompanyById(id);
+      const company = await companyService.getCompanyById(id, currentUser);
       if (!company) {
         return res.status(404).json({
           success: false,
