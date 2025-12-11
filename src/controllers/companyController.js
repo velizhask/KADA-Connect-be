@@ -19,7 +19,8 @@ class CompanyController {
         }
       });
 
-      const result = await companyService.getAllCompanies(filters);
+      const currentUser = req.user;
+      const result = await companyService.getAllCompanies(filters, currentUser);
 
       res.status(200).json({
         success: true,
@@ -43,7 +44,8 @@ class CompanyController {
         });
       }
 
-      const company = await companyService.getCompanyById(id);
+      const currentUser = req.user;
+      const company = await companyService.getCompanyById(id, currentUser);
 
       if (!company) {
         return res.status(404).json({
@@ -85,7 +87,8 @@ class CompanyController {
         }
       });
 
-      const companies = await companyService.searchCompanies(q.trim(), filters);
+      const currentUser = req.user;
+      const companies = await companyService.searchCompanies(q.trim(), filters, currentUser);
 
       res.status(200).json({
         success: true,

@@ -3,7 +3,7 @@ const { responseCache } = require('./responseCacheService');
 const logService = require('./logService');
 
 class CompanyService {
-  async getAllCompanies(filters = {}) {
+  async getAllCompanies(filters = {}, currentUser = null) {
     try {
       // Check cache first for list responses
       const cacheKey = 'getAllCompanies';
@@ -42,7 +42,11 @@ class CompanyService {
       }
 
       // Filter out invisible companies - only show visible ones
-      query = query.eq('is_visible', true);
+      // Exception: Admin can see all companies (including invisible for soft delete)
+      const isAdmin = currentUser && currentUser.role === 'admin';
+      if (!isAdmin) {
+        query = query.eq('is_visible', true);
+      }
 
       // Apply pagination
       const page = parseInt(filters.page) || 1;
@@ -61,7 +65,7 @@ class CompanyService {
       }
 
       // Transform data to camelCase for API consistency (excluding phone numbers for public API)
-      const transformedData = data.map(company => this.transformCompanyDataPublic(company));
+      const transformedData = data.map(company => this.transformCompanyDataPublic(company, currentUser?.role));
 
       const response = {
         companies: transformedData,
@@ -83,7 +87,7 @@ class CompanyService {
     }
   }
 
-  async getCompanyById(id) {
+  async getCompanyById(id, currentUser = null) {
     try {
       // Check cache first for individual company
       const cacheKey = 'getCompanyById';
@@ -123,11 +127,13 @@ class CompanyService {
       }
 
       // Check if company is visible - return null if not visible
-      if (!data['is_visible']) {
-        return null; // Hide invisible companies
+      // Exception: Admin can see invisible companies
+      const isAdmin = currentUser && currentUser.role === 'admin';
+      if (!data['is_visible'] && !isAdmin) {
+        return null; // Hide invisible companies from non-admin users
       }
 
-      const transformedData = this.transformCompanyDataPublic(data);
+      const transformedData = this.transformCompanyDataPublic(data, currentUser?.role);
 
       // Cache the individual company response
       responseCache.setAPIResponse(cacheKey, { id }, transformedData);
@@ -139,7 +145,7 @@ class CompanyService {
     }
   }
 
-  async searchCompanies(searchTerm, filters = {}) {
+  async searchCompanies(searchTerm, filters = {}, currentUser = null) {
     try {
       // Parse multiple search terms
       const searchTerms = searchTerm.split(/\s+/).filter(term => term.length > 0);
@@ -189,7 +195,11 @@ class CompanyService {
       }
 
       // Filter out invisible companies - only show visible ones in search
-      query = query.eq('is_visible', true);
+      // Exception: Admin can see invisible companies
+      const isAdmin = currentUser && currentUser.role === 'admin';
+      if (!isAdmin) {
+        query = query.eq('is_visible', true);
+      }
 
       const { data, error } = await query
         .order('company_name')
@@ -200,7 +210,7 @@ class CompanyService {
         throw new Error(`Database search failed: ${error.message}`);
       }
 
-      const transformedResults = data.map(company => this.transformCompanyDataPublic(company));
+      const transformedResults = data.map(company => this.transformCompanyDataPublic(company, currentUser?.role));
       // console.log(`[DEBUG] Search for "${searchTerm}" returned ${transformedResults.length} results`);
       return transformedResults;
     } catch (error) {
@@ -759,7 +769,12 @@ class CompanyService {
       dbData['contact_info_visible'] = patchData.contactInfoVisible || false;
     }
     if (patchData.isVisible !== undefined) {
-      dbData['is_visible'] = patchData.isVisible;
+      // Convert string 'true'/'false' to actual boolean, otherwise use as-is
+      if (typeof patchData.isVisible === 'string') {
+        dbData['is_visible'] = patchData.isVisible.toLowerCase() === 'true';
+      } else {
+        dbData['is_visible'] = patchData.isVisible;
+      }
     }
 
     return dbData;
@@ -768,12 +783,14 @@ class CompanyService {
   /**
    * Transform company data for public API responses (excludes phone number)
    * @param {Object} company - Raw company data from database
+   * @param {string} viewerRole - Role of the viewer (admin, student, company)
    * @returns {Object} Transformed company data without phone number
    */
-  transformCompanyDataPublic(company) {
+  transformCompanyDataPublic(company, viewerRole = null) {
     const isContactInfoVisible = company['contact_info_visible'] === true;
+    const isAdmin = viewerRole === 'admin';
 
-    return {
+    const response = {
       id: company.id,
       companyName: company['company_name'],
       companySummary: company['company_summary_description'],
@@ -788,15 +805,23 @@ class CompanyService {
       contactInfoVisible: isContactInfoVisible,
       completionRate: this.calculateCompletionRate(company)
     };
+
+    // Include isVisible field for admin users
+    if (isAdmin) {
+      response.isVisible = company['is_visible'];
+    }
+
+    return response;
   }
 
   /**
    * Transform company list data for public API responses (excludes phone numbers)
    * @param {Array} companies - Array of company data from database
+   * @param {string} viewerRole - Role of the viewer (admin, student, company)
    * @returns {Array} Transformed company data without phone numbers
    */
-  transformCompanyListPublic(companies) {
-    return companies.map(company => this.transformCompanyDataPublic(company));
+  transformCompanyListPublic(companies, viewerRole = null) {
+    return companies.map(company => this.transformCompanyDataPublic(company, viewerRole));
   }
 
   transformCompanyData(company) {

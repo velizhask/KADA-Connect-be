@@ -1005,7 +1005,12 @@ class StudentService {
       dbData['email_address'] = patchData.email || null;
     }
     if (patchData.isVisible !== undefined) {
-      dbData['is_visible'] = patchData.isVisible;
+      // Convert string 'true'/'false' to actual boolean, otherwise use as-is
+      if (typeof patchData.isVisible === 'string') {
+        dbData['is_visible'] = patchData.isVisible.toLowerCase() === 'true';
+      } else {
+        dbData['is_visible'] = patchData.isVisible;
+      }
     }
     if (patchData.batch !== undefined) {
       dbData['batch'] = patchData.batch;
@@ -1024,6 +1029,7 @@ class StudentService {
   transformStudentDataPublic(student, viewerRole = null, viewerId = null) {
     const isOwnData = viewerId && student.id === viewerId;
     const isStudentViewingOtherStudent = viewerRole === 'student' && !isOwnData;
+    const isAdmin = viewerRole === 'admin';
 
     // Base fields that everyone can see
     const baseData = {
@@ -1044,7 +1050,7 @@ class StudentService {
     }
 
     // For all other cases (admin, company, or viewing own data), show all fields
-    return {
+    const response = {
       ...baseData,
       university: student['university_institution'],
       major: student['program_major'],
@@ -1056,6 +1062,13 @@ class StudentService {
       timestamp: student['timestamp'],
       completionRate: this.calculateCompletionRate(student)
     };
+
+    // Include isVisible field for admin users
+    if (isAdmin) {
+      response.isVisible = student['is_visible'];
+    }
+
+    return response;
   }
 
   /**
