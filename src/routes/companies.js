@@ -8,7 +8,6 @@ const {
   validatePagination,
   validateCompanyId,
   validateSearchQuery,
-  validateLogoUrl,
   sanitizeInput
 } = require('../middlewares/validation');
 const {
@@ -61,9 +60,6 @@ router.get(
   roleCheck(['admin', 'student', 'company']),
   companyController.getCompanyStats
 );
-
-// POST /api/companies/validate-logo - Validate company logo
-router.post('/validate-logo', validateLogoUrl, companyController.validateLogo);
 
 // GET /api/companies/:id - Get company by ID
 router.get(

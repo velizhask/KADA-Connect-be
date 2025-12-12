@@ -106,35 +106,6 @@ const validateSearchQuery = (req, res, next) => {
   next();
 };
 
-const validateLogoUrl = (req, res, next) => {
-  const { logoUrl } = req.body;
-
-  if (!logoUrl || typeof logoUrl !== 'string' || logoUrl.trim().length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: 'Logo URL is required',
-      data: null
-    });
-  }
-
-  // Basic URL validation
-  const urlPattern = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i;
-  const isValidUrl = urlPattern.test(logoUrl.trim());
-
-  // Also check for local file paths or data URLs
-  const isLocalFile = logoUrl.startsWith('/') || logoUrl.startsWith('data:');
-
-  if (!isValidUrl && !isLocalFile) {
-    return res.status(400).json({
-      success: false,
-      message: 'Logo URL must be a valid URL (jpg, jpeg, png, gif, or webp)',
-      data: null
-    });
-  }
-
-  next();
-};
-
 const validateStudentStatus = (req, res, next) => {
   const { status } = req.params;
 
@@ -186,7 +157,6 @@ module.exports = {
   validateCompanyId,
   validateStudentId,
   validateSearchQuery,
-  validateLogoUrl,
   validateStudentStatus,
   sanitizeInput
 };
