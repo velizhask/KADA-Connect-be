@@ -334,43 +334,6 @@ class CompanyController {
     }
   }
 
-  async validateLogo(req, res, next) {
-    try {
-      // Basic validation for company logo URLs or uploads
-      const { logoUrl } = req.body;
-
-      if (!logoUrl) {
-        return res.status(400).json({
-          success: false,
-          message: 'Logo URL is required'
-        });
-      }
-
-      // Basic URL validation
-      const urlPattern = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i;
-      const isValidUrl = urlPattern.test(logoUrl);
-
-      // Check file size estimation (basic validation)
-      const isLocalFile = logoUrl.startsWith('/') || logoUrl.startsWith('data:');
-
-      res.status(200).json({
-        success: true,
-        message: 'Logo validation completed',
-        data: {
-          isValid: isValidUrl || isLocalFile,
-          recommendations: {
-            maxWidth: 400,
-            maxHeight: 400,
-            maxSize: '5MB',
-            formats: ['jpg', 'jpeg', 'png', 'gif', 'webp']
-          }
-        }
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
   async bulkApproveCompanies(req, res, next) {
     try {
       const { companyIds, isVisible = true } = req.body;
