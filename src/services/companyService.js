@@ -792,16 +792,42 @@ class CompanyService {
     }
   }
 
+  /**
+   * Deduplicates comma-separated values while preserving order
+   * Example: "Java, Javascript, Java" => "Java, Javascript"
+   * @param {string} value - Comma-separated string
+   * @returns {string|null} - Deduplicated comma-separated string or null
+   */
+  deduplicateCommaSeparated(value) {
+    if (!value || typeof value !== 'string') {
+      return value || null;
+    }
+
+    // Split by comma, trim each value, remove duplicates while preserving order
+    const uniqueValues = [];
+    const seen = new Set();
+
+    value.split(',').map(item => item.trim()).filter(Boolean).forEach(item => {
+      const lowerCaseItem = item.toLowerCase();
+      if (!seen.has(lowerCaseItem)) {
+        seen.add(lowerCaseItem);
+        uniqueValues.push(item);
+      }
+    });
+
+    return uniqueValues.length > 0 ? uniqueValues.join(', ') : null;
+  }
+
   transformCompanyDataForDB(companyData) {
     const dbData = {
       'id': companyData.id,
       'company_name': companyData.companyName,
       'company_summary_description': companyData.companySummary,
-      'industry_sector': companyData.industry,
+      'industry_sector': this.deduplicateCommaSeparated(companyData.industry),
       'company_website_link': companyData.companyWebsite || companyData.website || null,
       'company_logo': companyData.companyLogo || companyData.logo || null,
-      'tech_roles_interest': companyData.techRoles || null,
-      'preferred_skillsets': companyData.preferredSkillsets || null,
+      'tech_roles_interest': this.deduplicateCommaSeparated(companyData.techRoles),
+      'preferred_skillsets': this.deduplicateCommaSeparated(companyData.preferredSkillsets),
       'contact_person_name': companyData.contactPersonName || companyData.contactPerson || null,
       'contact_email': companyData.contactEmailAddress || companyData.contactEmail || null,
       'contact_phone_number': companyData.contactPhoneNumber || companyData.contactPhone || null,
@@ -834,7 +860,7 @@ class CompanyService {
       dbData['company_summary_description'] = patchData.companySummary;
     }
     if (patchData.industry !== undefined) {
-      dbData['industry_sector'] = patchData.industry;
+      dbData['industry_sector'] = this.deduplicateCommaSeparated(patchData.industry);
     }
     // Handle website field - accept both variants, normalize to DB
     if (patchData.companyWebsite !== undefined) {
@@ -854,11 +880,13 @@ class CompanyService {
     }
     if (patchData.techRoles !== undefined) {
       // Ensure tech roles is always a string to avoid JSON conflicts
-      dbData['tech_roles_interest'] = patchData.techRoles ? String(patchData.techRoles) : null;
+      // Also deduplicate values to prevent duplicates like "Frontend, Backend, Frontend"
+      dbData['tech_roles_interest'] = patchData.techRoles ? this.deduplicateCommaSeparated(String(patchData.techRoles)) : null;
     }
     if (patchData.preferredSkillsets !== undefined) {
       // Ensure skillsets is always a string to avoid JSON conflicts
-      dbData['preferred_skillsets'] = patchData.preferredSkillsets ? String(patchData.preferredSkillsets) : null;
+      // Also deduplicate values to prevent duplicates like "React, Vue, React"
+      dbData['preferred_skillsets'] = patchData.preferredSkillsets ? this.deduplicateCommaSeparated(String(patchData.preferredSkillsets)) : null;
     }
     if (patchData.contactPersonName !== undefined) {
       dbData['contact_person_name'] = patchData.contactPersonName || null;

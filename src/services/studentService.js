@@ -1025,6 +1025,32 @@ class StudentService {
     }
   }
 
+  /**
+   * Deduplicates comma-separated values while preserving order
+   * Example: "Java, Javascript, Java" => "Java, Javascript"
+   * @param {string} value - Comma-separated string
+   * @returns {string|null} - Deduplicated comma-separated string or null
+   */
+  deduplicateCommaSeparated(value) {
+    if (!value || typeof value !== 'string') {
+      return value || null;
+    }
+
+    // Split by comma, trim each value, remove duplicates while preserving order
+    const uniqueValues = [];
+    const seen = new Set();
+
+    value.split(',').map(item => item.trim()).filter(Boolean).forEach(item => {
+      const lowerCaseItem = item.toLowerCase();
+      if (!seen.has(lowerCaseItem)) {
+        seen.add(lowerCaseItem);
+        uniqueValues.push(item);
+      }
+    });
+
+    return uniqueValues.length > 0 ? uniqueValues.join(', ') : null;
+  }
+
   transformStudentDataForDB(studentData) {
     const dbData = {
       'id': studentData.id,
@@ -1033,8 +1059,8 @@ class StudentService {
       'employment_status': studentData.employmentStatus,
       'university_institution': studentData.university,
       'program_major': studentData.major,
-      'preferred_industry': studentData.preferredIndustry,
-      'tech_stack_skills': studentData.techStack,
+      'preferred_industry': this.deduplicateCommaSeparated(studentData.preferredIndustry),
+      'tech_stack_skills': this.deduplicateCommaSeparated(studentData.techStack),
       'self_introduction': studentData.selfIntroduction,
       'cv_upload': studentData.cvUpload || null,
       'profile_photo': studentData.profilePhoto || null,
@@ -1089,11 +1115,12 @@ class StudentService {
       dbData['program_major'] = patchData.major;
     }
     if (patchData.preferredIndustry !== undefined) {
-      dbData['preferred_industry'] = patchData.preferredIndustry;
+      dbData['preferred_industry'] = this.deduplicateCommaSeparated(patchData.preferredIndustry);
     }
     if (patchData.techStack !== undefined) {
       // Ensure tech stack is always a string to avoid JSON conflicts
-      dbData['tech_stack_skills'] = patchData.techStack ? String(patchData.techStack) : null;
+      // Also deduplicate values to prevent duplicates like "Java, Javascript, Java"
+      dbData['tech_stack_skills'] = patchData.techStack ? this.deduplicateCommaSeparated(String(patchData.techStack)) : null;
     }
     if (patchData.selfIntroduction !== undefined) {
       dbData['self_introduction'] = patchData.selfIntroduction;
