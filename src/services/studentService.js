@@ -1043,10 +1043,16 @@ class StudentService {
       'phone_number': (() => {
         const phoneValue = studentData.phoneNumber || studentData.phone;
         if (!phoneValue) return null;
-        // Validate phone number is numeric
-        const phoneRegex = /^\d+$/;
-        if (phoneRegex.test(String(phoneValue))) {
-          return parseInt(phoneValue);
+
+        // Validate phone number format - supports both international and Indonesian formats
+        // International: +[country code][number] (e.g., +62812345678, +821234567, +651234567)
+        // Indonesian local: 0[number] (e.g., 08123456789, 085155311616)
+        // Accepts: +7-15 digits OR 0 followed by 9-14 digits
+        const phoneRegex = /^(\+[0-9]{7,15}|0[0-9]{9,14})$/;
+        const phoneString = String(phoneValue).trim();
+
+        if (phoneRegex.test(phoneString)) {
+          return phoneString;  // Store as text, preserving format
         } else {
           console.warn('[WARN] Invalid phone number format:', phoneValue);
           return null;
@@ -1110,10 +1116,14 @@ class StudentService {
         if (phoneValue === null || phoneValue === '') {
           dbData['phone_number'] = null;
         } else {
-          // Validate phone number is numeric
-          const phoneRegex = /^\d+$/;
-          if (phoneRegex.test(String(phoneValue))) {
-            dbData['phone_number'] = parseInt(phoneValue);
+          // Validate phone number format - supports both international and Indonesian formats
+          // International: +[country code][number] (e.g., +62812345678, +821234567, +651234567)
+          // Indonesian local: 0[number] (e.g., 08123456789, 085155311616)
+          const phoneRegex = /^(\+[0-9]{7,15}|0[0-9]{9,14})$/;
+          const phoneString = String(phoneValue).trim();
+
+          if (phoneRegex.test(phoneString)) {
+            dbData['phone_number'] = phoneString;  // Store as text, preserving format
           } else {
             console.warn('[WARN] Invalid phone number format:', phoneValue);
             // Skip updating phone number if invalid

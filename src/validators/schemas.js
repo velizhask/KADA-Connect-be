@@ -246,10 +246,12 @@ const studentSchemas = {
     portfolioLink: Joi.string().uri().optional().messages({
       "string.uri": "Portfolio link must be a valid URL",
     }),
-    phoneNumber: Joi.string().max(20).optional().messages({
+    phoneNumber: Joi.string().pattern(/^(\+[0-9]{7,15}|0[0-9]{9,14})$/).max(20).optional().messages({
+      "string.pattern.base": "Phone number must be valid (e.g., 08123456789 or +62812345678)",
       "string.max": "Phone number cannot exceed 20 characters",
     }),
-    phone: Joi.string().max(20).optional().messages({
+    phone: Joi.string().pattern(/^(\+[0-9]{7,15}|0[0-9]{9,14})$/).max(20).optional().messages({
+      "string.pattern.base": "Phone number must be valid (e.g., 08123456789 or +62812345678)",
       "string.max": "Phone number cannot exceed 20 characters",
     }),
     isVisible: Joi.boolean().optional().default(false).messages({
@@ -310,10 +312,12 @@ const studentSchemas = {
     portfolioLink: Joi.string().uri().allow(null, "").optional().messages({
       "string.uri": "Portfolio link must be a valid URL",
     }),
-    phoneNumber: Joi.string().max(20).allow(null, "").optional().messages({
+    phoneNumber: Joi.string().pattern(/^(\+[0-9]{7,15}|0[0-9]{9,14})$/).max(20).allow(null, "").optional().messages({
+      "string.pattern.base": "Phone number must be valid (e.g., 08123456789 or +62812345678)",
       "string.max": "Phone number cannot exceed 20 characters",
     }),
-    phone: Joi.string().max(20).allow(null, "").optional().messages({
+    phone: Joi.string().pattern(/^(\+[0-9]{7,15}|0[0-9]{9,14})$/).max(20).allow(null, "").optional().messages({
+      "string.pattern.base": "Phone number must be valid (e.g., 08123456789 or +62812345678)",
       "string.max": "Phone number cannot exceed 20 characters",
     }),
     isVisible: Joi.boolean().optional().messages({
