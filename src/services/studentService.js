@@ -1025,6 +1025,32 @@ class StudentService {
     }
   }
 
+  /**
+   * Deduplicates comma-separated values while preserving order
+   * Example: "Java, Javascript, Java" => "Java, Javascript"
+   * @param {string} value - Comma-separated string
+   * @returns {string|null} - Deduplicated comma-separated string or null
+   */
+  deduplicateCommaSeparated(value) {
+    if (!value || typeof value !== 'string') {
+      return value || null;
+    }
+
+    // Split by comma, trim each value, remove duplicates while preserving order
+    const uniqueValues = [];
+    const seen = new Set();
+
+    value.split(',').map(item => item.trim()).filter(Boolean).forEach(item => {
+      const lowerCaseItem = item.toLowerCase();
+      if (!seen.has(lowerCaseItem)) {
+        seen.add(lowerCaseItem);
+        uniqueValues.push(item);
+      }
+    });
+
+    return uniqueValues.length > 0 ? uniqueValues.join(', ') : null;
+  }
+
   transformStudentDataForDB(studentData) {
     const dbData = {
       'id': studentData.id,
@@ -1033,8 +1059,8 @@ class StudentService {
       'employment_status': studentData.employmentStatus,
       'university_institution': studentData.university,
       'program_major': studentData.major,
-      'preferred_industry': studentData.preferredIndustry,
-      'tech_stack_skills': studentData.techStack,
+      'preferred_industry': this.deduplicateCommaSeparated(studentData.preferredIndustry),
+      'tech_stack_skills': this.deduplicateCommaSeparated(studentData.techStack),
       'self_introduction': studentData.selfIntroduction,
       'cv_upload': studentData.cvUpload || null,
       'profile_photo': studentData.profilePhoto || null,
@@ -1043,10 +1069,16 @@ class StudentService {
       'phone_number': (() => {
         const phoneValue = studentData.phoneNumber || studentData.phone;
         if (!phoneValue) return null;
-        // Validate phone number is numeric
-        const phoneRegex = /^\d+$/;
-        if (phoneRegex.test(String(phoneValue))) {
-          return parseInt(phoneValue);
+
+        // Validate phone number format - supports both international and Indonesian formats
+        // International: +[country code][number] (e.g., +62812345678, +821234567, +651234567)
+        // Indonesian local: 0[number] (e.g., 08123456789, 085155311616)
+        // Accepts: +7-15 digits OR 0 followed by 9-14 digits
+        const phoneRegex = /^(\+[0-9]{7,15}|0[0-9]{9,14})$/;
+        const phoneString = String(phoneValue).trim();
+
+        if (phoneRegex.test(phoneString)) {
+          return phoneString;  // Store as text, preserving format
         } else {
           console.warn('[WARN] Invalid phone number format:', phoneValue);
           return null;
@@ -1083,11 +1115,12 @@ class StudentService {
       dbData['program_major'] = patchData.major;
     }
     if (patchData.preferredIndustry !== undefined) {
-      dbData['preferred_industry'] = patchData.preferredIndustry;
+      dbData['preferred_industry'] = this.deduplicateCommaSeparated(patchData.preferredIndustry);
     }
     if (patchData.techStack !== undefined) {
       // Ensure tech stack is always a string to avoid JSON conflicts
-      dbData['tech_stack_skills'] = patchData.techStack ? String(patchData.techStack) : null;
+      // Also deduplicate values to prevent duplicates like "Java, Javascript, Java"
+      dbData['tech_stack_skills'] = patchData.techStack ? this.deduplicateCommaSeparated(String(patchData.techStack)) : null;
     }
     if (patchData.selfIntroduction !== undefined) {
       dbData['self_introduction'] = patchData.selfIntroduction;
@@ -1110,10 +1143,14 @@ class StudentService {
         if (phoneValue === null || phoneValue === '') {
           dbData['phone_number'] = null;
         } else {
-          // Validate phone number is numeric
-          const phoneRegex = /^\d+$/;
-          if (phoneRegex.test(String(phoneValue))) {
-            dbData['phone_number'] = parseInt(phoneValue);
+          // Validate phone number format - supports both international and Indonesian formats
+          // International: +[country code][number] (e.g., +62812345678, +821234567, +651234567)
+          // Indonesian local: 0[number] (e.g., 08123456789, 085155311616)
+          const phoneRegex = /^(\+[0-9]{7,15}|0[0-9]{9,14})$/;
+          const phoneString = String(phoneValue).trim();
+
+          if (phoneRegex.test(phoneString)) {
+            dbData['phone_number'] = phoneString;  // Store as text, preserving format
           } else {
             console.warn('[WARN] Invalid phone number format:', phoneValue);
             // Skip updating phone number if invalid
