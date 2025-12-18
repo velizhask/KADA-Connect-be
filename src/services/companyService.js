@@ -65,7 +65,7 @@ class CompanyService {
       }
 
       // Transform data to camelCase for API consistency (excluding phone numbers for public API)
-      const transformedData = data.map(company => this.transformCompanyDataPublic(company, currentUser?.role));
+      const transformedData = data.map(company => this.transformCompanyDataPublic(company, currentUser?.role, currentUser?.id));
 
       const response = {
         companies: transformedData,
@@ -133,7 +133,7 @@ class CompanyService {
         return null; // Hide invisible companies from non-admin users
       }
 
-      const transformedData = this.transformCompanyDataPublic(data, currentUser?.role);
+      const transformedData = this.transformCompanyDataPublic(data, currentUser?.role, currentUser?.id);
 
       // Cache the individual company response
       responseCache.setAPIResponse(cacheKey, { id }, transformedData);
@@ -210,7 +210,7 @@ class CompanyService {
         throw new Error(`Database search failed: ${error.message}`);
       }
 
-      const transformedResults = data.map(company => this.transformCompanyDataPublic(company, currentUser?.role));
+      const transformedResults = data.map(company => this.transformCompanyDataPublic(company, currentUser?.role, currentUser?.id));
       // console.log(`[DEBUG] Search for "${searchTerm}" returned ${transformedResults.length} results`);
       return transformedResults;
     } catch (error) {
@@ -359,7 +359,7 @@ class CompanyService {
       // Clear cache to ensure new company appears immediately
       responseCache.clearByTable('companies');
 
-      const transformedData = this.transformCompanyData(data);
+      const transformedData = this.transformCompanyData(data, req?.user?.id, req?.user?.role);
       return transformedData;
     } catch (error) {
       // Log failed CREATE operation
@@ -456,7 +456,7 @@ class CompanyService {
       responseCache.clearByTable('companies', id);
 
       console.log('[DEBUG CompanyService.updateCompany] About to transform data:', data);
-      const transformedData = this.transformCompanyData(data);
+      const transformedData = this.transformCompanyData(data, req?.user?.id, req?.user?.role);
       console.log('[DEBUG CompanyService.updateCompany] Transformed data:', transformedData);
       console.log('[DEBUG CompanyService.updateCompany] Returning transformed data');
       return transformedData;
@@ -578,7 +578,7 @@ class CompanyService {
       // Clear cache to ensure patched company appears immediately
       responseCache.clearByTable('companies', id);
 
-      const transformedData = this.transformCompanyData(data);
+      const transformedData = this.transformCompanyData(data, req?.user?.id, req?.user?.role);
 
       console.log('[DEBUG] === PATCH COMPANY SUCCESS ===');
       console.log('[DEBUG] Updated company ID:', data.id);
@@ -934,9 +934,12 @@ class CompanyService {
    * @param {string} viewerRole - Role of the viewer (admin, student, company)
    * @returns {Object} Transformed company data without phone number
    */
-  transformCompanyDataPublic(company, viewerRole = null) {
+  transformCompanyDataPublic(company, viewerRole = null, viewerId = null) {
     const isContactInfoVisible = company['contact_info_visible'] === true;
-    const isAdmin = viewerRole === 'admin';
+    const isOwnerOrAdmin = (viewerId && viewerId === company.id) || viewerRole === 'admin';
+
+    // Always show contact email to owner or admin, otherwise check visibility flag
+    const shouldShowContactInfo = isOwnerOrAdmin || isContactInfoVisible;
 
     const response = {
       id: company.id,
@@ -948,14 +951,15 @@ class CompanyService {
       techRoles: company['tech_roles_interest'],
       preferredSkillsets: company['preferred_skillsets'],
       contactPerson: company['contact_person_name'],
-      contactEmail: isContactInfoVisible ? company['contact_email'] : null,
+      contactEmail: shouldShowContactInfo ? company['contact_email'] : null,
       // Phone number excluded for public API privacy
+      emailAddress: company['email_address'],
       contactInfoVisible: isContactInfoVisible,
-      completionRate: this.calculateCompletionRate(company)
+      completionRate: this.calculateCompletionRate(company, viewerId, viewerRole)
     };
 
     // Include isVisible field for admin users
-    if (isAdmin) {
+    if (isOwnerOrAdmin) {
       response.isVisible = company['is_visible'];
     }
 
@@ -968,12 +972,16 @@ class CompanyService {
    * @param {string} viewerRole - Role of the viewer (admin, student, company)
    * @returns {Array} Transformed company data without phone numbers
    */
-  transformCompanyListPublic(companies, viewerRole = null) {
-    return companies.map(company => this.transformCompanyDataPublic(company, viewerRole));
+  transformCompanyListPublic(companies, viewerRole = null, viewerId = null) {
+    return companies.map(company => this.transformCompanyDataPublic(company, viewerRole, viewerId));
   }
 
-  transformCompanyData(company) {
+  transformCompanyData(company, viewerId = null, viewerRole = null) {
     const isContactInfoVisible = company['contact_info_visible'] === true;
+    const isOwnerOrAdmin = (viewerId && viewerId === company.id) || viewerRole === 'admin';
+
+    // Always show contact info to owner or admin, otherwise check visibility flag
+    const shouldShowContactInfo = isOwnerOrAdmin || isContactInfoVisible;
 
     return {
       id: company.id,
@@ -985,10 +993,11 @@ class CompanyService {
       techRoles: company['tech_roles_interest'],
       preferredSkillsets: company['preferred_skillsets'],
       contactPerson: company['contact_person_name'],
-      contactEmail: isContactInfoVisible ? company['contact_email'] : null,
-      contactPhone: isContactInfoVisible ? company['contact_phone_number'] : null,
+      contactEmail: shouldShowContactInfo ? company['contact_email'] : null,
+      contactPhone: shouldShowContactInfo ? company['contact_phone_number'] : null,
+      emailAddress: company['email_address'],
       contactInfoVisible: isContactInfoVisible,
-      completionRate: this.calculateCompletionRate(company)
+      completionRate: this.calculateCompletionRate(company, viewerId, viewerRole)
     };
   }
 
@@ -1011,17 +1020,20 @@ class CompanyService {
    * @param {Object} company - Raw company data from database
    * @returns {number} Completion rate as percentage (0-100)
    */
-  calculateCompletionRate(company) {
+  calculateCompletionRate(company, viewerId = null, viewerRole = null) {
     const fields = [
       'company_name', 'company_summary_description', 'industry_sector',
       'company_website_link', 'company_logo', 'tech_roles_interest',
       'preferred_skillsets', 'contact_person_name', 'contact_email',
-      'contact_phone_number', 'contact_info_visible', 'email_address'
+      'contact_phone_number', 'email_address'
     ];
 
     let completed = 0;
     fields.forEach(field => {
       const value = company[field];
+
+      // Count all fields if they have values
+      // Completion rate is about YOUR data completeness, not about visibility settings
       if (value !== null && value !== undefined && value.toString().trim() !== '') {
         completed++;
       }

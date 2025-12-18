@@ -1198,7 +1198,8 @@ class StudentService {
       profilePhoto: student['profile_photo'],
       linkedin: student['linkedin'],
       portfolioLink: student['portfolio_link'],
-      email: student['email_address']
+      email: student['email_address'],
+      techStack: student['tech_stack_skills']
     };
 
     // If viewer is a student looking at another student, only show base data

@@ -64,6 +64,7 @@ const getProfile = async (req, res, next) => {
           contact_person_name,
           contact_email,
           contact_phone_number,
+          email_address,
           contact_info_visible,
           "timestamp"
         `)
@@ -77,7 +78,7 @@ const getProfile = async (req, res, next) => {
         });
       }
 
-      profile = companyService.transformCompanyData(data);
+      profile = companyService.transformCompanyData(data, userId, role);
     } else {
       return res.status(400).json({
         success: false,
