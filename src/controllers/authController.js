@@ -131,6 +131,7 @@ class AuthController {
             contact_person_name,
             contact_email,
             contact_phone_number,
+            email_address,
             contact_info_visible,
             timestamp
           `)
@@ -138,7 +139,7 @@ class AuthController {
           .single();
 
         if (!companyError && companyData) {
-          profile = companyService.transformCompanyData(companyData);
+          profile = companyService.transformCompanyData(companyData, userId, userData.role);
         }
       }
 
