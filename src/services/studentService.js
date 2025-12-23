@@ -117,8 +117,8 @@ class StudentService {
         pagination: {
           page,
           limit,
-          total: filteredData.length,
-          totalPages: Math.ceil(filteredData.length / limit)
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / limit)
         }
       };
 
